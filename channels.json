@@ -1,0 +1,26 @@
+{
+  "_help": "Edit this file to create channels. Each channel: name, description, color (#hex), mode ('loop' = videos repeat in order all day from 'start', or 'fixed' = each item appears at its 'time'). Each item: 'id' = archive.org identifier of a single VIDEO (not a collection — collections like 'g4-xplay' are folders; use the episode identifiers inside them, e.g. 'X-Play.2011.04.19'). Watch out for brackets: every { needs a matching }, and channels are separated by commas.",
+  "timezone": "local",
+  "_timezone_help": "Set this to \"utc\" when you share the site: then every visitor worldwide sees the same broadcast clock. Keep \"local\" while only you watch. Add \"timezone\": \"utc\" inside a single channel to override just that channel.",
+  "ownerPassword": null,
+  "_owner_help": "Put a secret word here (e.g. \"ownerPassword\": \"tvdinner\") and the 'New channel' button locks: only someone who knows it can open the builder. Visitors can only watch. The true protection for a public site comes from hosting: keep channels.json in a place only you can edit (see README).",
+  "channels": [
+    {
+      "name": "X Play",
+      "description": "nothing but X-Play, all day",
+      "color": "#38bdf8",
+      "mode": "loop",
+      "start": "07:00",
+      "items": [
+        { "id": "X-Play.2011.04.19" },
+        { "id": "X-Play.2008.11.26" },
+        { "id": "X-Play.2008.08.11" },
+        { "id": "X-Play.2008.08.18" },
+        { "id": "X-Play.2011.12.21" },
+        { "id": "X-Play.Fall.Out.3.Special", "title": "X-Play Fallout 3 Special" },
+        { "id": "X-Play.2008.10.27" },
+        { "id": "X-Play.2008.10.29" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,406 @@
+:root {
+  --bg: #0b0f17;
+  --panel: #121826;
+  --panel-2: #1a2234;
+  --line: #263049;
+  --text: #e7ecf5;
+  --muted: #94a3b8;
+  --accent: #38bdf8;
+  --live: #ef4444;
+  --label-w: 230px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+header#topbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px 20px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+header#topbar h1 {
+  font-size: 20px;
+  margin: 0;
+  letter-spacing: 1px;
+}
+
+header#topbar h1 span { color: var(--accent); }
+
+#views { display: flex; gap: 6px; flex-wrap: wrap; }
+
+#views button, #newChannelBtn {
+  background: var(--panel-2);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+#views button.active {
+  background: var(--accent);
+  color: #04121f;
+  border-color: var(--accent);
+}
+
+#newChannelBtn, #watchLiveBtn { color: var(--text); }
+#watchLiveBtn { color: #04121f !important; background: var(--live) !important; border-color: var(--live) !important; }
+
+#searchWrap { position: relative; }
+#searchInput {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+  width: 220px;
+  font-size: 13px;
+}
+#searchInput:focus { border-color: var(--accent); outline: none; }
+#searchResults {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 420px;
+  max-width: 80vw;
+  max-height: 55vh;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.55);
+  z-index: 120;
+  padding: 6px;
+}
+.searchHit {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.searchHit:hover { background: var(--panel-2); }
+.searchHit .t { color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+.searchHit .sTitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.searchHit .sCh { margin-left: auto; color: var(--muted); font-size: 11px; white-space: nowrap; }
+.searchHit.empty { color: var(--muted); cursor: default; }
+
+#clock {
+  margin-left: auto;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+#toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 10px 20px;
+}
+
+#toolbar select {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+#main { padding: 0 20px 140px; }
+
+#status {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 8px 20px 0;
+  margin: 0;
+}
+
+h2.section {
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--muted);
+  margin: 18px 0 10px;
+}
+
+/* ================= Grid view ================= */
+#gridWrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+}
+#gridInner { min-width: 1150px; }
+
+.hourRuler {
+  position: relative;
+  height: 28px;
+  border-bottom: 1px solid var(--line);
+}
+
+.rulerPad {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: var(--label-w);
+  background: var(--panel);
+  z-index: 3;
+  border-right: 1px solid var(--line);
+}
+
+.rulerTrack { position: absolute; left: var(--label-w); right: 0; top: 0; bottom: 0; }
+.rulerTrack span {
+  position: absolute;
+  top: 7px;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: var(--muted);
+  border-left: 1px solid var(--line);
+  padding-left: 4px;
+}
+
+#gridRows { position: relative; }
+
+.channelRow { position: relative; height: 66px; border-bottom: 1px solid var(--line); }
+.channelRow .rowLabelCell {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: var(--label-w);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  cursor: pointer;
+}
+.channelRow .rowLabelCell:hover { background: var(--panel-2); }
+.dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.rowName { font-weight: 700; font-size: 14px; }
+.rowSub { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+
+.channelRow .track { position: absolute; left: var(--label-w); right: 0; top: 0; bottom: 0; }
+
+.block {
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  overflow: hidden;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  line-height: 1.3;
+  cursor: pointer;
+  z-index: 2;
+}
+.block:hover { outline: 2px solid var(--accent); z-index: 5; }
+.block .bTitle { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.block .bTime { color: var(--muted); font-size: 11px; }
+.block.live { box-shadow: inset 3px 0 0 var(--live); }
+
+#nowLine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--live);
+  z-index: 6;
+  pointer-events: none;
+}
+
+/* ================= List view ================= */
+#listView { max-width: 720px; }
+.dayItem {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: var(--panel);
+  cursor: pointer;
+}
+.dayItem:hover { border-color: var(--accent); }
+.dayItem .t {
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  font-weight: 700;
+  min-width: 110px;
+}
+.dayItem .d { color: var(--muted); font-size: 12px; margin-left: auto; white-space: nowrap; }
+.dayItem.live { border-color: var(--live); }
+
+.badge {
+  background: var(--live);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 20px;
+  margin-left: 8px;
+}
+
+/* ================= Now view ================= */
+#nowView {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  max-width: 1400px;
+}
+.nowCard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+.nowCard:hover { border-color: var(--accent); }
+.nowCard h3 { margin: 4px 0; display: flex; align-items: center; gap: 8px; font-size: 15px; }
+.nowCard .name { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+.nowCard .next { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+
+/* ================= Help ================= */
+#help {
+  max-width: 860px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 24px;
+  margin-top: 10px;
+}
+#help code { background: var(--panel-2); padding: 2px 6px; border-radius: 4px; }
+#help pre {
+  background: #0a0e15;
+  border: 1px solid var(--line);
+  padding: 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 12px;
+}
+
+/* ================= Watch bar ================= */
+#watch {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  z-index: 100;
+  padding: 10px 16px 14px;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, .5);
+}
+#watchHeader { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; flex-wrap: wrap; }
+#watchTitle { font-weight: 800; }
+#watchChannel { color: var(--muted); }
+#watchHeader button, #watchHeader a {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 12px;
+  text-decoration: none;
+  font-size: 13px;
+  cursor: pointer;
+}
+#watchHeader button:hover, #watchHeader a:hover { border-color: var(--accent); }
+#watchFrameBox {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+}
+#watchFrameBox iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+/* ================= Builder modal ================= */
+#builder {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 8, 14, .7);
+  z-index: 200;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 40px 16px;
+}
+#builderCard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 22px;
+  width: 640px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+#builderCard h3 { margin: 0 0 6px; }
+#builderCard label {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 8px;
+}
+#builderCard input, #builderCard select, #builderCard textarea {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  width: 100%;
+}
+#builderCard textarea { font-family: Consolas, monospace; font-size: 13px; }
+#builderCard button {
+  background: var(--accent);
+  color: #04121f;
+  border: 0;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-weight: 700;
+  cursor: pointer;
+  width: fit-content;
+}
+#builderCard #cfgCopy { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); }
+#cfgOut { margin-top: 6px; }
+#builderClose { margin-top: 10px; background: var(--panel-2) !important; color: var(--text) !important; }
+#cfgIssues { color: var(--text); }
+
+/* ---------- Theater mode ---------- */
+body.theater #watch {
+  left: 50%;
+  right: auto;
+  bottom: auto;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(94vw, 1600px);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+}
+body.theater { overflow: hidden; }
+body.theater #watchFrameBox { padding-top: 0; height: min(70vh, 900px); }
+body.theater #watchHeader { font-size: 15px; }

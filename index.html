@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Archive TV</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header id="topbar">
+  <h1>📼 ARCHIVE <span>TV</span></h1>
+  <nav id="views">
+    <button data-view="grid">TV Guide</button>
+    <button data-view="list">Day List</button>
+    <button data-view="now">Now Playing</button>
+    <button data-view="guidehelp">How it works</button>
+  </nav>
+  <button id="watchLiveBtn">▶ Watch live</button>
+  <div id="searchWrap">
+    <input id="searchInput" placeholder="Find a program…" autocomplete="off" spellcheck="false">
+    <div id="searchResults" style="display:none"></div>
+  </div>
+  <button id="newChannelBtn">＋ New channel</button>
+  <div id="clock">—</div>
+</header>
+
+<div id="toolbar" style="display:none">
+  <label>Channel:</label>
+  <select id="channelSelect"></select>
+</div>
+
+<p id="status"></p>
+
+<main id="main">
+
+  <!-- ================= GRID VIEW ================= -->
+  <div id="gridWrap">
+    <div id="gridInner">
+      <div class="hourRuler" id="gridRuler"></div>
+      <div id="gridBody" style="position:relative">
+        <div id="gridRows"></div>
+        <div id="nowLine" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= LIST VIEW ================= -->
+  <section id="listView" class="view" style="display:none">
+    <h2 class="section">Today's schedule</h2>
+    <div id="listLiveBanner"></div>
+    <div id="dayList"></div>
+  </section>
+
+  <!-- ================= NOW VIEW ================= -->
+  <section id="nowView" class="view" style="display:none"></section>
+
+  <!-- ================= HELP ================= -->
+  <section id="help" class="view" style="display:none">
+    <h2>Creating channels</h2>
+    <p>
+      Channels live in <code>channels.json</code> next to this page.
+      Click <b>＋ New channel</b> in the top bar: paste archive.org video URLs or
+      identifiers, hit <b>Build</b>, copy the JSON, and paste it into the
+      <code>"channels"</code> list in <code>channels.json</code>. Save the file and
+      refresh — that's it.
+    </p>
+
+    <h3>Manual editing</h3>
+    <p>
+      The <code>id</code> is the piece in the address bar:
+      <code>https://archive.org/details/<b>his_girl_friday</b></code> →
+      <code>"id": "his_girl_friday"</code>.
+      Video lengths are fetched automatically from archive.org, so a channel can be as simple as:
+    </p>
+    <pre>{
+  "name": "My Channel",
+  "mode": "loop",        // videos repeat in order, all day
+  "start": "07:00",      // time the loop begins
+  "color": "#38bdf8",    // row color in the guide
+  "items": [
+    { "id": "popeye_patriotic_popeye" },
+    { "id": "house_on_haunted_hill_ipod", "seconds": 5400 }
+  ]
+}</pre>
+    <p>
+      Use <code>"mode": "fixed"</code> and give each item a <code>"time": "20:30"</code>
+      to pin programs to exact broadcast times. Use <code>"seconds"</code> (or
+      <code>"minutes"</code>) only if a video's length can't be auto-detected.
+    </p>
+
+    <h3>Tips</h3>
+    <ul>
+      <li>Click any program in the guide to watch it in the player at the bottom.</li>
+      <li>Click a channel's name in the guide to jump to its day list.</li>
+      <li>Switch between Guide / Day List / Now Playing any time — the site remembers your last view.</li>
+    </ul>
+
+    <h3>Owner controls</h3>
+    <p>
+      Channel creation is <b>owner-only</b>. In <code>channels.json</code> set
+      <code>"ownerPassword": "your-secret"</code> — the <b>＋ New channel</b> button
+      then asks for the passcode. Visitors who don't know it can watch the guide
+      and play videos but can never create channels. When the site is published,
+      real protection comes from hosting: <code>channels.json</code> lives where
+      only you can change it (e.g. your GitHub repo), so viewers see exactly the
+      channels you created — and nothing else.
+    </p>
+
+    <h3>Real broadcast times</h3>
+    <p>
+      Programs run on the clock. Clicking a program that's on-air right now joins
+      it <b>at the actual broadcast position</b> (the player seeks there), and
+      while a live channel is open it <b>advances automatically</b> to the next
+      program when one ends — just like real TV. So every visitor is on the same
+      broadcast clock no matter where they live, set
+      <code>"timezone": "utc"</code> in <code>channels.json</code>.
+    </p>
+
+    <h3>Sharing with everyone</h3>
+    <h4>Quickest: Netlify Drop</h4>
+    <ol>
+      <li>Go to <code>app.netlify.com/drop</code>.</li>
+      <li>Drag this whole <code>archive-tv</code> folder onto the page.</li>
+      <li>You get a public link like <code>https://your-name.netlify.app</code> — anyone can visit and see your channels.</li>
+    </ol>
+    <h4>Classic: GitHub Pages</h4>
+    <ol>
+      <li>Create a GitHub repository and upload these files (not <code>serve.bat</code>).</li>
+      <li>Settings → Pages → Source: <b>main branch</b>.</li>
+      <li>Your site: <code>https://you.github.io/your-repo</code>.</li>
+    </ol>
+    <p>
+      Updating channels later = edit <code>channels.json</code> (or build one here,
+      copy the JSON in) and re-upload just that file. Only people with access to
+      your repo/hosting can do that — your viewers can't.
+    </p>
+  </section>
+
+</main>
+
+<!-- ================= WATCH BAR ================= -->
+<section id="watch" style="display:none">
+  <div id="watchHeader">
+    <button id="zapPrev" title="Previous channel">◀</button>
+    <button id="zapNext" title="Next channel">▶</button>
+    <span id="watchTitle"></span>
+    <span id="watchChannel" style="color:var(--muted);font-size:12px"></span>
+    <span style="flex:1"></span>
+    <button id="theaterBtn" title="Theater mode">⤢ Theater</button>
+    <a id="watchLink" href="#" target="_blank">Open on Archive.org ↗</a>
+    <button id="watchClose" onclick="closeWatch()">✕ Close</button>
+  </div>
+  <div id="watchFrameBox">
+    <iframe id="watchFrame" allow="autoplay; fullscreen; encrypted-media" allowfullscreen></iframe>
+  </div>
+</section>
+
+<!-- ================= CHANNEL BUILDER ================= -->
+<div id="builder" style="display:none">
+  <div id="builderCard">
+    <h3>Build a channel</h3>
+    <label>Channel name</label>
+    <input id="cfgName" placeholder="My Channel" value="">
+    <label>Description</label>
+    <input id="cfgDesc" placeholder="What plays here">
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <div>
+        <label>Mode</label>
+        <select id="cfgMode">
+          <option value="loop">loop — repeat all day</option>
+          <option value="fixed">fixed — exact times</option>
+        </select>
+      </div>
+      <div>
+        <label>Starts at</label>
+        <input id="cfgStart" type="time" value="07:00">
+      </div>
+      <div>
+        <label>Color</label>
+        <input id="cfgColor" type="color" value="#38bdf8">
+      </div>
+    </div>
+    <label>archive.org videos — one identifier or URL per line</label>
+    <textarea id="cfgIds" rows="6" spellcheck="false"
+      placeholder="popeye_patriotic_popeye&#10;https://archive.org/details/night_of_the_living_dead"></textarea>
+    <div>
+      <button id="cfgBuild">Build JSON</button>
+    </div>
+    <div id="cfgOutWrap" style="display:none">
+      <label>Copy this and paste it into channels.json (inside "channels" [ ])</label>
+      <textarea id="cfgOut" rows="10" spellcheck="false"></textarea>
+      <div id="cfgIssues" style="display:none; font-size:13px; padding:8px 10px; border-radius:8px"></div>
+      <button id="cfgCopy">⧉ Copy</button>
+      <span id="copyMsg" style="color:var(--accent);font-size:12px"></span>
+    </div>
+    <button id="builderClose" style="margin-top:10px">Close</button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
