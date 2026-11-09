@@ -22,11 +22,6 @@
         { "id": "X-Play.2008.10.27" },
         { "id": "X-Play.2008.10.29" }
       ],
-      "breaks": {
-        "after": "*",
-        "file": "commercials.json",
-        "count": [1, 2]
-      }
     },
     {
       "name": "Cartoon OverLoad",
@@ -39,13 +34,6 @@
         { "id": "yt:NAWOdnuDBBU", "time": "08:30" },
         { "id": "yt:H7U7qOseNeI", "time": "10:00" }
       ],
-      "breaks": [
-        {
-          "after": "*",
-          "file": "commercials.json",
-          "count": 3
-        }
-      ]
     }
   ]
 }
