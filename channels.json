@@ -11,7 +11,7 @@
       "description": "nothing but X-Play, all day",
       "color": "#38bdf8",
       "mode": "loop",
-      "start": "07:00",
+      "start": "12:00",
       "items": [
         { "id": "X-Play.2011.04.19" },
         { "id": "X-Play.2008.11.26" },
@@ -33,7 +33,7 @@
       "description": "Cartoon all day every day",
       "color": "#38bdf8",
       "mode": "loop",
-      "start": "07:00",
+      "start": "12:00",
       "items": [
         { "id": "yt:v9EdW9ADEZQ", "time": "07:00" },
         { "id": "yt:NAWOdnuDBBU", "time": "08:30" },
