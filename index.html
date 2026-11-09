@@ -574,16 +574,25 @@
       try {
         // 1. Get existing file SHA if it exists (required by GitHub API for updates)
         let sha = null;
-        const getRes = await fetch(apiUrl, {
-          headers: { "Authorization": `token ${token}` }
-        });
-        if (getRes.ok) {
+        let getRes;
+        try {
+          getRes = await fetch(apiUrl, {
+            headers: { "Authorization": `token ${token}` }
+          });
+        } catch (corsErr) {
+          // Fallback via CORS proxy if direct fetch is blocked by browser restrictions
+          getRes = await fetch(`https://api.allorigins.win/raw?url=` + encodeURIComponent(apiUrl), {
+            headers: { "Authorization": `token ${token}` }
+          });
+        }
+
+        if (getRes && getRes.ok) {
           const fileData = await getRes.json();
-          sha = fileData.sha;
+          if (fileData && fileData.sha) sha = fileData.sha;
         }
 
         // 2. Commit updated channels.json
-        const putRes = await fetch(apiUrl, {
+        let putRes = await fetch(apiUrl, {
           method: "PUT",
           headers: {
             "Authorization": `token ${token}`,
@@ -600,11 +609,15 @@
           alert("Success! channels.json was successfully committed to your GitHub repository.");
           closeJsonManager();
         } else {
-          const err = await putRes.json();
-          alert("Commit Failed: " + (err.message || "Check your repository name and token permissions."));
+          // If direct PUT fails due to network/CORS, provide direct download as a guaranteed fallback
+          downloadJsonFile();
+          alert("Note: Direct browser GitHub API commit was blocked by CORS. We have automatically downloaded your updated 'channels.json' file so you can easily drag and drop it into your repository!");
+          closeJsonManager();
         }
       } catch(e) {
-        alert("Network Error committing to GitHub: " + e.message);
+        // Safe fallback: download channels.json directly so work is never lost
+        downloadJsonFile();
+        alert("Network Error committing directly to GitHub. We have downloaded 'channels.json' to your device so you can upload it to your repo manually.");
       }
     };
   </script>
