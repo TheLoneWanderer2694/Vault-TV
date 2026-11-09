@@ -1,39 +1,69 @@
 {
-  "_help": "Edit this file to create channels. Each channel: name, description, color (#hex), mode ('loop' = videos repeat in order all day from 'start', or 'fixed' = each item appears at its 'time'). Each item: 'id' = archive.org identifier of a single VIDEO (not a collection — collections like 'g4-xplay' are folders; use the episode identifiers inside them, e.g. 'X-Play.2011.04.19'). Watch out for brackets: every { needs a matching }, and channels are separated by commas.",
-  "_breaks_help": "Mid-program commercials: a channel's 'breaks' can be { \"after\": \"*\", \"file\": \"commercials.json\", \"count\": [1, 2] } — each episode then cuts to a seeded-random pod of 1–2 ads pulled from commercials.json, and resumes at the exact frame it was cut at. Ads can be archive.org or YouTube ('id': 'yt:VIDEO-ID'); lengths resolve automatically (archive via metadata, YouTube via a hidden player at load — or set 'seconds' to skip it). You can also list fixed break videos: 'breaks': [{ \"id\": \"some_ad_id\", \"after\": \"*\" }]. \"after\" matches part of a program's ID or title; omit it or use \"*\" for every program. 'count' can be a number or a [min, max] range.",
   "timezone": "local",
-  "_timezone_help": "Set this to \"utc\" when you share the site: then every visitor worldwide sees the same broadcast clock. Keep \"local\" while only you watch. Add \"timezone\": \"utc\" inside a single channel to override just that channel.",
-  "ownerPassword": null,
-  "_owner_help": "Put a secret word here (e.g. \"ownerPassword\": \"tvdinner\") and the 'New channel' button locks: only someone who knows it can open the builder. Visitors can only watch. The true protection for a public site comes from hosting: keep channels.json in a place only you can edit (see README).",
   "channels": [
     {
-      "name": "X Play",
-      "description": "nothing but X-Play, all day",
+      "name": "X-Play & Gaming",
+      "description": "Classic video game reviews, specials, and TechTV highlights.",
       "color": "#38bdf8",
       "mode": "loop",
-      "start": "12:00am",
+      "start": "07:00",
       "items": [
-        { "id": "X-Play.2011.04.19" },
-        { "id": "X-Play.2008.11.26" },
-        { "id": "X-Play.2008.08.11" },
-        { "id": "X-Play.2008.08.18" },
-        { "id": "X-Play.2011.12.21" },
-        { "id": "X-Play.Fall.Out.3.Special", "title": "X-Play Fallout 3 Special" },
-        { "id": "X-Play.2008.10.27" },
-        { "id": "X-Play.2008.10.29" }
-      ],
+        {
+          "id": "X-Play.2011.04.19"
+        },
+        {
+          "id": "X-Play.2008.11.26"
+        },
+        {
+          "id": "X-Play.Fall.Out.3.Special",
+          "title": "X-Play Fallout 3 Special"
+        },
+        {
+          "id": "X-Play.2008.10.27"
+        }
+      ]
     },
     {
-      "name": "Cartoon OverLoad",
-      "description": "Cartoon all day every day",
-      "color": "#38bdf8",
+      "name": "Cartoon Overload",
+      "description": "Retro animated series, classic shorts, and nostalgia.",
+      "color": "#f59e0b",
       "mode": "loop",
-      "start": "12:00am",
+      "start": "07:00",
       "items": [
-        { "id": "yt:v9EdW9ADEZQ", "time": "07:00" },
-        { "id": "yt:NAWOdnuDBBU", "time": "08:30" },
-        { "id": "yt:H7U7qOseNeI", "time": "10:00" }
-      ],
+        {
+          "id": "yt:v9EdW9ADEZQ",
+          "seconds": 1200,
+          "title": "Classic Toon Hour 1"
+        },
+        {
+          "id": "popeye_patriotic_popeye",
+          "title": "Patriotic Popeye"
+        },
+        {
+          "id": "yt:NAWOdnuDBBU",
+          "seconds": 1500,
+          "title": "Classic Toon Hour 2"
+        }
+      ]
+    },
+    {
+      "name": "Retro Sci-Fi & Horror",
+      "description": "Vintage sci-fi movies, B-horror classics, and cult cinema.",
+      "color": "#10b981",
+      "mode": "loop",
+      "start": "00:00",
+      "items": [
+        {
+          "id": "night_of_the_living_dead",
+          "seconds": 5760,
+          "title": "Night of the Living Dead (1968)"
+        },
+        {
+          "id": "house_on_haunted_hill_ipod",
+          "seconds": 4500,
+          "title": "House on Haunted Hill"
+        }
+      ]
     }
   ]
 }
