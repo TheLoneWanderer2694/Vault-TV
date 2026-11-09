@@ -1,49 +1,36 @@
-{
-  "timezone": "local",
-  "channels": [
-    {
-      "name": "X-Play & Gaming",
-      "description": "Classic video game reviews, specials, and TechTV highlights.",
-      "color": "#38bdf8",
-      "mode": "loop",
-      "start": "12:00am",
-      "items": [
-        {
-          "id": "X-Play.2011.04.19"
-        },
-        {
-          "id": "X-Play.2008.11.26"
-        },
-        {
-          "id": "X-Play.Fall.Out.3.Special",
-        },
-        {
-          "id": "X-Play.2008.10.27"
-        }
-      ]
-    },
-    {
-      "name": "Cartoon Overload",
-      "description": "Retro animated series, classic shorts, and nostalgia.",
-      "color": "#f59e0b",
-      "mode": "loop",
-      "start": "12:00am",
-      "items": [
-        {
-          "id": "yt:v9EdW9ADEZQ",
-          "seconds": 1200,
-          "title": "Classic Toon Hour 1"
-        },
-        {
-          "id": "popeye_patriotic_popeye",
-          "title": "Patriotic Popeye"
-        },
-        {
-          "id": "yt:NAWOdnuDBBU",
-          "seconds": 1500,
-          "title": "Classic Toon Hour 2"
-        }
-      ]
-    },
-      ]
-    }
+[
+  {
+    "name": "Retro Cartoons",
+    "description": "Vintage animation and classic cartoons",
+    "color": "#f43f5e",
+    "mode": "loop",
+    "start": "07:00",
+    "items": [
+      {
+        "id": "yt:v9EdW9ADEZQ",
+        "title": "Classic Cartoon Feature"
+      },
+      {
+        "id": "yt:NAWOdnuDBBU",
+        "title": "Vintage Animation Reel"
+      }
+    ]
+  },
+  {
+    "name": "Toonami Rerun",
+    "description": "Toonami all the time",
+    "color": "#38bdf8",
+    "mode": "loop",
+    "start": "07:00",
+    "items": [
+      {
+        "id": "yt:66Ja9Q1U-2Q",
+        "title": "yt:66Ja9Q1U-2Q"
+      },
+      {
+        "id": "yt:1W8F7aohB4g",
+        "title": "yt:1W8F7aohB4g"
+      }
+    ]
+  }
+]
