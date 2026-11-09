@@ -1,1424 +1,612 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ARCHIVE TV — Vintage Cable Experience</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&family=Inter:wght@400;600;800&display=swap');
-
-  :root {
-    --bg-dark: #05070b;
-    --panel-dark: #0c1017;
-    --panel-border: #1b2434;
-    --crt-phosphor: #38bdf8;
-    --osd-green: #22c55e;
-    --osd-amber: #f59e0b;
-    --label-w: 200px;
-  }
-
-  body {
-    background-color: var(--bg-dark);
-    color: #e2e8f0;
-    font-family: 'Inter', sans-serif;
-    overflow-x: hidden;
-    user-select: none;
-  }
-
-  .font-crt {
-    font-family: 'VT323', monospace;
-  }
-
-  .font-mono-tech {
-    font-family: 'Share Tech Mono', monospace;
-  }
-
-  /* CRT Screen Simulation Container */
-  .crt-container {
-    position: relative;
-    background: #000;
-    border-radius: 20px;
-    box-shadow: inset 0 0 80px rgba(0,0,0,0.9), 0 0 30px rgba(0,0,0,0.8);
-    overflow: hidden;
-  }
-
-  .crt-container::before {
-    content: " ";
-    display: block;
-    position: absolute;
-    top: 0; left: 0; bottom: 0; right: 0;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-    z-index: 25;
-    background-size: 100% 4px, 6px 100%;
-    pointer-events: none;
-    opacity: 0.8;
-  }
-
-  /* Screen Curvature & Reflection Glass Effect */
-  .crt-glass {
-    position: absolute;
-    inset: 0;
-    border-radius: 16px;
-    box-shadow: inset 0 0 40px rgba(255,255,255,0.05);
-    background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.05) 0%, rgba(0, 0, 0, 0.4) 90%);
-    pointer-events: none;
-    z-index: 26;
-  }
-
-  /* CRT Screen Scanline Flickering Effect */
-  .scanline-flicker {
-    animation: flicker 0.15s infinite;
-  }
-
-  @keyframes flicker {
-    0% { opacity: 0.97; }
-    50% { opacity: 1; }
-    100% { opacity: 0.98; }
-  }
-
-  /* On-Screen Display (OSD) Overlay */
-  .osd-text {
-    font-family: 'VT323', monospace;
-    text-shadow: 2px 2px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000, 0 0 8px rgba(34, 197, 94, 0.6);
-  }
-
-  /* Static Noise Effect Canvas */
-  #staticCanvas {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 20;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.08s ease;
-  }
-
-  #staticCanvas.active {
-    opacity: 0.95;
-  }
-
-  /* Remote Control Keypad Styles */
-  .remote-btn {
-    background: linear-gradient(145deg, #2a3346, #1a2232);
-    box-shadow: 3px 3px 6px #0b0f17, -2px -2px 5px #27334a, inset 0 1px 0 rgba(255,255,255,0.1);
-    transition: all 0.08s ease;
-  }
-
-  .remote-btn:active {
-    background: linear-gradient(145deg, #151c2a, #232d3f);
-    box-shadow: inset 2px 2px 4px #0b0f17;
-    transform: translateY(1px);
-  }
-
-  /* Guide Styling - Retro Prevue Look */
-  .guide-table-row {
-    height: 52px;
-    border-bottom: 1px solid #1e293b;
-  }
-
-  .block-program {
-    position: absolute;
-    top: 6px;
-    bottom: 6px;
-    border-radius: 6px;
-    padding: 4px 8px;
-    font-size: 12px;
-    overflow: hidden;
-    cursor: pointer;
-    transition: transform 0.1s, box-shadow 0.1s;
-  }
-
-  .block-program:hover {
-    transform: scale(1.01);
-    z-index: 10;
-    box-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
-  }
-
-  .block-break {
-    background: repeating-linear-gradient(45deg, #1e293b, #1e293b 10px, #0f172a 10px, #0f172a 20px);
-    border: 1px dashed #475569;
-  }
-
-  /* Custom Scrollbar for Retro Guide */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  ::-webkit-scrollbar-track {
-    background: #0f172a;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: #334155;
-    border-radius: 4px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: #475569;
-  }
-
-  /* Glow Effects */
-  .glow-green { text-shadow: 0 0 10px rgba(34, 197, 94, 0.8); }
-  .glow-amber { text-shadow: 0 0 10px rgba(245, 158, 11, 0.8); }
-  .glow-blue { text-shadow: 0 0 10px rgba(56, 189, 248, 0.8); }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARCHIVE TV — Vintage Cable Experience</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Share Tech Mono', monospace;
+      background-color: #09090b;
+      color: #f4f4f5;
+    }
+    .vt323 {
+      font-family: 'VT323', monospace;
+    }
+    /* CRT Scanlines and vignette */
+    .crt::after {
+      content: " ";
+      display: block;
+      position: absolute;
+      top: 0; left: 0; bottom: 0; right: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+      z-index: 20;
+      background-size: 100% 3px, 3px 100%;
+      pointer-events: none;
+    }
+    .crt-vignette {
+      box-shadow: inset 0 0 100px rgba(0,0,0,0.9), inset 0 0 30px rgba(0,0,0,0.8);
+    }
+  </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+<body class="min-h-screen flex flex-col select-none">
 
-  <!-- ================= TOP HEADER BAR ================= -->
-  <header class="bg-slate-900 border-b border-slate-800 px-4 py-3 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-50 shadow-lg">
-    <div class="flex items-center gap-3">
-      <div class="w-9 h-9 bg-cyan-500/10 border border-cyan-500/40 rounded-lg flex items-center justify-center text-cyan-400 font-bold text-xl shadow-inner">
-        📼
-      </div>
+  <!-- Top Header Bar -->
+  <header class="bg-zinc-900 border-b border-zinc-800 px-4 py-3 flex items-center justify-between z-30">
+    <div class="flex items-center space-x-3">
+      <span class="text-2xl">📺</span>
       <div>
-        <h1 class="text-xl font-extrabold tracking-wider text-slate-100 flex items-center gap-2">
-          ARCHIVE <span class="text-cyan-400">TV</span>
-          <span class="text-xs font-mono-tech px-2 py-0.5 rounded bg-cyan-950 border border-cyan-800 text-cyan-300">CABLE SYSTEM v3.4</span>
-        </h1>
+        <h1 class="text-xl font-bold tracking-wider text-amber-400 vt323">ARCHIVE TV</h1>
+        <p class="text-xs text-zinc-400">Vintage Cable Broadcast Simulation & GitHub Sync</p>
       </div>
     </div>
-
-    <!-- Navigation & Controls -->
-    <div class="flex items-center gap-2 flex-wrap">
-      <button id="btnTVView" onclick="switchMainView('tv')" class="px-3 py-1.5 rounded-lg text-sm font-semibold border border-cyan-500/50 bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 transition flex items-center gap-2">
-        <i class="fa-solid font-bold fa-tv"></i> TV Screen
-      </button>
-      <button id="btnGuideView" onclick="switchMainView('guide')" class="px-3 py-1.5 rounded-lg text-sm font-semibold border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-2">
-        <i class="fa-solid fa-list-ul"></i> Cable Guide
-      </button>
-      <button id="btnNowView" onclick="switchMainView('now')" class="px-3 py-1.5 rounded-lg text-sm font-semibold border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-2">
-        <i class="fa-solid fa-bolt text-amber-400"></i> On-Air Now
-      </button>
-      <button id="btnHelpView" onclick="switchMainView('help')" class="px-3 py-1.5 rounded-lg text-sm font-semibold border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-2">
-        <i class="fa-circle-question fa-solid"></i> Help & Setup
-      </button>
-    </div>
-
-    <!-- Top Bar Quick Actions -->
-    <div class="flex items-center gap-3">
-      <button onclick="toggleRemoteModal()" class="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/50 text-amber-300 hover:bg-amber-500/30 font-semibold text-sm flex items-center gap-2 transition">
-        <i class="fa-solid fa-remote"></i> Cable Remote
-      </button>
-      <button onclick="openChannelBuilder()" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/30 font-semibold text-sm flex items-center gap-1.5 transition">
-        <i class="fa-solid fa-plus"></i> New Channel
-      </button>
-      <button onclick="openJsonManager()" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/30 font-semibold text-sm flex items-center gap-1.5 transition" title="Export & Sync channels.json to GitHub">
-        <i class="fa-solid fa-cloud-arrow-up"></i> Sync GitHub / JSON
-      </button>
-      <div id="liveClock" class="font-crt text-2xl text-cyan-400 bg-slate-950 px-3 py-0.5 rounded border border-slate-800 tracking-widest shadow-inner">
-        --:--:--
-      </div>
+    <div class="flex items-center space-x-2">
+      <button onclick="openChannelBuilder()" class="bg-amber-600 hover:bg-amber-500 text-black font-bold px-3 py-1.5 rounded text-sm transition">＋ New Channel</button>
+      <button onclick="openJsonManager()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded text-sm transition">Sync GitHub / JSON</button>
+      <button onclick="toggleTheaterMode()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded text-sm transition hidden sm:block">Theater Mode</button>
     </div>
   </header>
 
-  <!-- ================= MAIN CONTAINER ================= -->
-  <main class="flex-1 max-w-7xl w-full mx-auto p-4 flex flex-col gap-6">
-
-    <!-- ================= VIEW 1: RETRO CRT TELEVISION ================= -->
-    <section id="viewTV" class="flex flex-col lg:flex-row gap-6 items-start">
+  <!-- Main Content Layout -->
+  <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+    
+    <!-- Left / Center: Television Viewport -->
+    <div class="flex-1 flex flex-col items-center justify-center p-4 bg-zinc-950 relative">
       
-      <!-- MAIN CRT TELEVISION FRAME -->
-      <div class="flex-1 w-full bg-slate-900 border-4 border-slate-800 rounded-3xl p-4 sm:p-6 shadow-2xl relative">
+      <!-- CRT Television Cabinet -->
+      <div class="w-full max-w-4xl bg-zinc-900 rounded-2xl p-4 sm:p-6 shadow-2xl border border-zinc-800 flex flex-col">
         
-        <!-- TV Top Brand Badge & Speakers -->
-        <div class="flex items-center justify-between pb-3 mb-2 border-b border-slate-800/80 px-2 text-xs text-slate-500 font-mono-tech uppercase">
-          <div class="flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>STEREO SOUND // CATV READY</span>
-          </div>
-          <div class="tracking-widest font-bold text-slate-400">ARCHIVE CABLE-TRON 2000</div>
-          <div class="flex items-center gap-3">
-            <span id="crtStatusIndicator" class="text-cyan-400 font-bold">MODE: CRT FX ACTIVE</span>
-          </div>
-        </div>
-
-        <!-- CRT SCREEN CONTAINER -->
-        <div id="crtWrapper" class="crt-container aspect-video w-full relative flex items-center justify-center overflow-hidden scanline-flicker">
+        <!-- Screen Bezel -->
+        <div class="relative bg-black rounded-xl overflow-hidden border-4 border-zinc-800 aspect-video crt-vignette flex items-center justify-center">
           
-          <!-- Static Canvas Layer -->
-          <canvas id="staticCanvas"></canvas>
+          <!-- Scanline Overlay -->
+          <div id="crtOverlay" class="absolute inset-0 crt z-20 pointer-events-none"></div>
 
-          <!-- Glass Vignette Overlay -->
-          <div class="crt-glass"></div>
+          <!-- Video Elements -->
+          <video id="tvVideo" class="w-full h-full object-cover hidden" playsinline></video>
+          <iframe id="tvIframe" class="w-full h-full border-0 hidden" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
 
-          <!-- On Screen Display Overlay (OSD) -->
-          <div id="osdContainer" class="absolute top-6 left-6 right-6 z-30 pointer-events-none transition-opacity duration-300 opacity-0 flex justify-between items-start">
-            <div class="bg-slate-950/80 border-2 border-emerald-500/60 rounded px-4 py-2 text-emerald-400 font-crt text-2xl sm:text-3xl leading-none glow-green flex flex-col gap-1 shadow-2xl">
-              <div class="flex items-center gap-3">
-                <span id="osdChannelNum">CH 01</span>
-                <span class="text-slate-400">|</span>
-                <span id="osdChannelName">X-PLAY & GAMING</span>
-              </div>
-              <div id="osdProgramTitle" class="text-lg text-slate-200 font-sans font-semibold tracking-normal mt-1">
-                Loading Program...
-              </div>
+          <!-- On-Screen Display (OSD) Banner -->
+          <div id="osdBanner" class="absolute top-4 left-4 z-40 bg-black/80 border border-amber-500/50 text-amber-400 px-4 py-2 rounded font-mono text-sm opacity-0 transition-opacity duration-300 pointer-events-none">
+            <div class="flex items-center space-x-2">
+              <span id="osdChan" class="font-bold text-amber-300">CH 01</span>
+              <span class="text-zinc-500">|</span>
+              <span id="osdTitle" class="truncate max-w-xs">Loading program...</span>
             </div>
-            
-            <div class="flex flex-col items-end gap-1">
-              <div id="osdVolume" class="bg-slate-950/80 border border-emerald-500/50 rounded px-3 py-1 text-emerald-400 font-crt text-xl glow-green">
-                VOL ||||||||--
-              </div>
-              <div class="bg-slate-950/80 border border-amber-500/50 rounded px-2 py-0.5 text-amber-400 font-crt text-sm glow-amber">
-                STEREO / SAP
-              </div>
-            </div>
+            <div class="text-xs text-zinc-400 mt-0.5" id="osdSub">ARCHIVE NETWORK</div>
           </div>
 
-          <!-- Unmute Overlay Banner if Browser Blocks Autoplay Audio -->
-          <div id="unmuteBanner" onclick="unmuteAudio()" class="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-5 py-2.5 rounded-full cursor-pointer shadow-xl animate-bounce hidden flex items-center gap-2 text-sm border-2 border-amber-300">
-            <i class="fa-solid fa-volume-high"></i> CLICK TO UNMUTE AUDIO
-          </div>
-
-          <!-- Video Player Frames -->
-          <video id="tvVideo" class="w-full h-full object-contain bg-black relative z-10 hidden" autoplay playsinline crossorigin="anonymous"></video>
-          <iframe id="tvIframe" class="w-full h-full object-contain border-0 bg-black relative z-10" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>
-
-          <!-- Off-Air / No Signal Standby Screen -->
-          <div id="offAirScreen" class="absolute inset-0 bg-slate-950 text-cyan-400 z-15 flex flex-col items-center justify-center font-crt text-2xl gap-3 text-center p-6 hidden">
-            <div class="text-6xl text-slate-700 animate-bounce"><i class="fa-solid fa-satellite-dish"></i></div>
-            <div class="text-3xl text-amber-400 glow-amber">CHANNEL OFF AIR</div>
-            <div id="offAirMsg" class="text-lg text-slate-400 font-mono-tech max-w-md">No schedule available for this time block.</div>
+          <!-- Splash Screen / Blank State -->
+          <div id="splashScreen" class="absolute inset-0 bg-zinc-900 flex flex-col items-center justify-center p-6 text-center z-10">
+            <h2 class="text-3xl vt323 text-amber-400 mb-2">NO SIGNAL / SELECT CHANNEL</h2>
+            <p class="text-zinc-400 text-sm max-w-md mb-4">Choose a channel from the guide on the right or turn on the television.</p>
+            <button onclick="tuneChannel(0)" class="bg-amber-500 hover:bg-amber-400 text-black font-bold px-6 py-2 rounded transition">▶ Power On TV</button>
           </div>
 
         </div>
 
-        <!-- TV Physical Bezel Bottom Controls -->
-        <div class="mt-4 pt-4 border-t border-slate-800 flex flex-wrap items-center justify-between gap-4">
+        <!-- TV Control Deck -->
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-4 bg-zinc-950 p-3 rounded-xl border border-zinc-800/80">
           
-          <!-- Physical TV Power & Zap Controls -->
-          <div class="flex items-center gap-3">
-            <button id="btnPower" onclick="toggleTVPower()" class="w-12 h-12 rounded-full bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold text-lg flex items-center justify-center shadow-lg border-2 border-red-400 transition" title="TV Power Switch">
-              <i class="fa-solid fa-power-off"></i>
-            </button>
-            <div class="h-8 w-px bg-slate-800"></div>
-            <button onclick="zapChannel(-1)" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1">
-              <i class="fa-solid fa-chevron-left"></i> CH -
-            </button>
-            <button onclick="zapChannel(1)" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1">
-              CH + <i class="fa-solid fa-chevron-right"></i>
-            </button>
+          <div class="flex items-center space-x-2">
+            <button onclick="toggleTVPower()" id="powerBtn" class="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded font-bold text-xs uppercase transition shadow">Power</button>
+            <button onclick="zapChannel(-1)" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded text-xs transition">◀ CH Down</button>
+            <button onclick="zapChannel(1)" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded text-xs transition">CH Up ▶</button>
           </div>
 
-          <!-- Volume Controls -->
-          <div class="flex items-center gap-2">
-            <span class="text-xs text-slate-400 font-mono-tech">AUDIO:</span>
-            <button onclick="adjustVolume(-0.1)" class="w-8 h-8 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold flex items-center justify-center text-sm">
-              -
-            </button>
-            <div class="w-24 bg-slate-950 h-3 rounded-full border border-slate-800 overflow-hidden relative">
-              <div id="volumeBar" class="bg-cyan-500 h-full w-4/5 transition-all duration-150"></div>
+          <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-2">
+              <span class="text-xs text-zinc-400">Vol:</span>
+              <input type="range" min="0" max="1" step="0.05" value="0.8" oninput="adjustVolume(this.value)" class="w-20 accent-amber-500">
             </div>
-            <button onclick="adjustVolume(0.1)" class="w-8 h-8 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold flex items-center justify-center text-sm">
-              +
-            </button>
-            <button onclick="toggleMute()" id="btnMute" class="px-2.5 py-1 bg-slate-800 border border-slate-700 rounded text-xs font-semibold text-slate-300 hover:bg-slate-700">
-              MUTE
-            </button>
-          </div>
-
-          <!-- Display Toggles -->
-          <div class="flex items-center gap-2">
-            <button onclick="toggleAutoNext()" id="btnAutoNext" class="px-3 py-1.5 rounded bg-emerald-950 border border-emerald-800 text-emerald-300 text-xs font-semibold hover:bg-emerald-900 transition flex items-center gap-1.5" title="Automatically advance to the next program when current finishes">
-              <i class="fa-solid fa-forward"></i> Auto-Next: ON
-            </button>
-            <button onclick="toggleCRTEffects()" class="px-3 py-1.5 rounded bg-cyan-950 border border-cyan-800 text-cyan-300 text-xs font-semibold hover:bg-cyan-900 transition">
-              <i class="fa-solid fa-wand-magic-sparkles"></i> CRT FX
-            </button>
-            <button onclick="toggleTheaterMode()" class="px-3 py-1.5 rounded bg-slate-800 border border-slate-700 text-slate-300 text-xs font-semibold hover:bg-slate-700 transition">
-              <i class="fa-solid fa-expand"></i> Theater
-            </button>
+            <button onclick="toggleMute()" id="muteBtn" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-2.5 py-1.5 rounded text-xs transition">🔊 Mute</button>
+            <button onclick="toggleCRTEffects()" id="crtToggleBtn" class="bg-zinc-800 hover:bg-zinc-700 text-amber-400 px-2.5 py-1.5 rounded text-xs transition border border-amber-500/30">CRT FX: ON</button>
           </div>
 
         </div>
 
       </div>
 
-      <!-- SIDE PANEL: CURRENT CHANNEL DETAILS & QUICK LIST -->
-      <div class="w-full lg:w-80 bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col gap-4">
-        
-        <div class="border-b border-slate-800 pb-3">
-          <div class="text-xs text-cyan-400 font-mono-tech uppercase tracking-wider font-semibold">Tuned Broadcast</div>
-          <h2 id="sideChannelTitle" class="text-lg font-bold text-slate-100 mt-0.5">CH 01 — X-Play & Gaming</h2>
-          <p id="sideChannelDesc" class="text-xs text-slate-400 mt-1">Non-stop classic video game reviews, specials, and vintage TV media.</p>
-        </div>
+    </div>
 
-        <!-- Currently Playing Card -->
-        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
-          <div class="flex items-center justify-between text-xs">
-            <span class="text-emerald-400 font-bold flex items-center gap-1.5 font-mono-tech">
-              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span> ON AIR NOW
-            </span>
-            <span id="sidePlayTime" class="text-slate-400 font-mono-tech">--:-- - --:--</span>
-          </div>
-          <div id="sideProgramName" class="font-bold text-sm text-cyan-300 line-clamp-2">
-            Selecting channel...
-          </div>
-          <div class="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-800 mt-1">
-            <div id="sideProgress" class="bg-cyan-500 h-full w-0 transition-all duration-300"></div>
-          </div>
-        </div>
-
-        <!-- Channel Selector Column -->
-        <div class="flex-1 flex flex-col gap-2">
-          <div class="text-xs font-semibold uppercase text-slate-400 tracking-wider">Channel Lineup</div>
-          <div id="sideChannelList" class="flex flex-col gap-1.5 max-h-[380px] overflow-y-auto pr-1">
-            <!-- Populated via JS -->
-          </div>
-        </div>
-
+    <!-- Right Sidebar: Channel Guide -->
+    <div class="w-full lg:w-80 bg-zinc-900 border-t lg:border-t-0 lg:border-l border-zinc-800 flex flex-col h-72 lg:h-auto">
+      <div class="p-3 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-zinc-400">Broadcast Channel Guide</span>
+        <span id="currentTimeDisplay" class="text-xs font-mono text-amber-400">00:00:00</span>
       </div>
-
-    </section>
-
-    <!-- ================= VIEW 2: CABLE GUIDE GRID (PREVUE STYLE) ================= -->
-    <section id="viewGuide" class="hidden flex-col gap-4">
-      <div class="flex flex-wrap items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded-xl p-4">
-        <div>
-          <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
-            <i class="fa-solid fa-table-cells text-cyan-400"></i> Cable Program Guide (Interactive EPG)
-          </h2>
-          <p class="text-xs text-slate-400">Click any program block to instantly tune your TV to that channel broadcast.</p>
-        </div>
-        <div class="flex items-center gap-3 text-xs font-mono-tech">
-          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-cyan-500/20 border border-cyan-500"></span> Live Program</span>
-          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-slate-800 border border-slate-700"></span> Scheduled</span>
-          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded block-break"></span> Commercial Break</span>
-        </div>
+      <div id="sideChannelList" class="flex-1 overflow-y-auto divide-y divide-zinc-800/60 p-2 space-y-1">
+        <!-- Rendered dynamically -->
       </div>
+    </div>
 
-      <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-x-auto shadow-xl">
-        <div id="guideInner" class="min-w-[1000px] relative">
-          <!-- Time Ruler -->
-          <div id="guideRuler" class="h-8 border-b border-slate-800 relative bg-slate-950 flex items-center text-xs font-mono-tech text-slate-400">
-            <!-- Dynamic Ruler Hours Generated in JS -->
-          </div>
-          <!-- Channel Rows -->
-          <div id="guideRows" class="relative">
-            <!-- Dynamic Rows Generated in JS -->
-          </div>
-          <!-- Red Now Time Line -->
-          <div id="guideNowLine" class="absolute top-0 bottom-0 w-0.5 bg-red-500 z-30 pointer-events-none shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
-        </div>
+  </div>
+
+  <!-- Channel Builder Modal -->
+  <div id="builderModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-zinc-900 border border-zinc-700 rounded-xl max-w-xl w-full p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold text-amber-400 vt323">ADD / EDIT CHANNEL</h3>
+        <button onclick="closeChannelBuilder()" class="text-zinc-400 hover:text-white">✕</button>
       </div>
-    </section>
-
-    <!-- ================= VIEW 3: ON-AIR NOW SUMMARY ================= -->
-    <section id="viewNow" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <!-- Populated via JS -->
-    </section>
-
-    <!-- ================= VIEW 4: HELP & CHANNEL SETUP ================= -->
-    <section id="viewHelp" class="hidden flex-col gap-6 max-w-4xl mx-auto bg-slate-900 border border-slate-800 rounded-2xl p-6">
-      <div>
-        <h2 class="text-2xl font-bold text-cyan-400 mb-2">📼 ARCHIVE TV — How It Works</h2>
-        <p class="text-slate-300 text-sm leading-relaxed">
-          Archive TV functions as a virtual broadcast cable headend. Videos run on a synchronized global clock—meaning every viewer tuning into a channel sees the exact same moment of the broadcast!
-        </p>
-      </div>
-
-      <div class="border-t border-slate-800 pt-4">
-        <h3 class="text-lg font-bold text-slate-200 mb-2">📺 Adding Custom Channels</h3>
-        <p class="text-slate-400 text-sm mb-3">
-          Channels are configured in <code class="bg-slate-950 text-cyan-300 px-2 py-0.5 rounded border border-slate-800 font-mono text-xs">channels.json</code>. You can paste Internet Archive identifiers or YouTube links.
-        </p>
-        <pre class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs text-slate-300 font-mono leading-relaxed overflow-x-auto">
-{
-  "name": "Classic Retro Cartoons",
-  "mode": "loop",        // "loop" repeats items all day, "fixed" locks to exact times
-  "start": "07:00",      // Broadcast cycle start time
-  "color": "#38bdf8",    // Guide row accent color
-  "items": [
-    { "id": "popeye_patriotic_popeye" },
-    { "id": "yt:v9EdW9ADEZQ" }
-  ]
-}</pre>
-      </div>
-
-      <div class="border-t border-slate-800 pt-4">
-        <h3 class="text-lg font-bold text-slate-200 mb-2">🍿 Commercial Breaks & Mid-Cut Resume</h3>
-        <p class="text-slate-400 text-sm leading-relaxed">
-          Archive TV supports mid-episode commercial interruptions. Define a break pool in <code class="bg-slate-950 text-cyan-300 px-2 py-0.5 rounded border border-slate-800 font-mono text-xs">commercials.json</code> and episodes will cut out, play retro ads, and resume at the precise video frame where it cut off!
-        </p>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- ================= REMOTE CONTROL POPUP MODAL ================= -->
-  <div id="remoteModal" class="fixed bottom-6 right-6 z-50 transition-all duration-300 transform translate-y-full opacity-0 pointer-events-none">
-    <div class="bg-slate-900 border-2 border-slate-700 rounded-3xl p-5 shadow-2xl w-64 flex flex-col gap-4 text-center">
       
-      <!-- Remote Header / Receiver LED -->
-      <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-        <div class="flex items-center gap-2">
-          <span class="w-3 h-3 rounded-full bg-red-600 animate-pulse"></span>
-          <span class="text-xs font-mono-tech text-slate-400 uppercase">CATV REMOTE</span>
-        </div>
-        <button onclick="toggleRemoteModal()" class="text-slate-400 hover:text-white text-sm">✕</button>
-      </div>
-
-      <!-- Remote Keypad Display Window -->
-      <div class="bg-slate-950 border border-slate-800 rounded-lg p-2 font-crt text-cyan-400 text-2xl flex items-center justify-between shadow-inner">
-        <span class="text-xs text-slate-500 font-mono-tech">TUNING:</span>
-        <span id="remoteDigitDisplay" class="glow-blue">--</span>
-      </div>
-
-      <!-- Remote Control Grid Buttons -->
-      <div class="grid grid-cols-3 gap-2">
-        <button onclick="pressRemoteDigit('1')" class="remote-btn p-2 rounded-lg text-slate-200 font-extrabold text-lg">1</button>
-        <button onclick="pressRemoteDigit('2')" class="remote-btn p-2 rounded-lg text-slate-200 font-extrabold text-lg">2</button>
-        <button onclick="pressRemoteDigit('3')" class="remote-btn p-2 rounded-lg text-slate-200 font-extrabold text-lg">3</button>
-
-        <button onclick="pressRemoteDigit('4')" class="remote-btn p-2 rounded-lg text-slate-200 font-extrabold text-lg">4</button>
-        <button onclick="pressRemoteDigit('5')" class="remote-btn p-2 rounded-lg text-slate-200 font-extrabold text-lg">5</button>
-        <button onclick="pressRemoteDigit('6')" class="remote-btn p-2 rounded-lg text-slate-200 font-extrabold text-lg">6</button>
-
-        <button onclick="pressRemoteDigit('7')" class="remote-btn p-2 rounded-lg text-slate-200 font-extrabold text-lg">7</button>
-        <button onclick="pressRemoteDigit('8')" class="remote-btn p-2 rounded-lg text-slate-200 font-extrabold text-lg">8</button>
-        <button onclick="pressRemoteDigit('9')" class="remote-btn p-2 rounded-lg text-slate-200 font-extrabold text-lg">9</button>
-
-        <button onclick="zapChannel(-1)" class="remote-btn p-2 rounded-lg text-cyan-400 font-bold text-xs">CH ▲</button>
-        <button onclick="pressRemoteDigit('0')" class="remote-btn p-2 rounded-lg text-slate-200 font-extrabold text-lg">0</button>
-        <button onclick="zapChannel(1)" class="remote-btn p-2 rounded-lg text-cyan-400 font-bold text-xs">CH ▼</button>
-      </div>
-
-      <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800">
-        <button onclick="switchMainView('guide')" class="remote-btn p-2 rounded-lg text-amber-400 text-xs font-bold uppercase">GUIDE</button>
-        <button onclick="triggerOSD()" class="remote-btn p-2 rounded-lg text-emerald-400 text-xs font-bold uppercase">INFO</button>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ================= CHANNEL BUILDER MODAL ================= -->
-  <div id="builderModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-xl w-full flex flex-col gap-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
-          <i class="fa-solid fa-circle-plus text-emerald-400"></i> Easy Channel Builder
-        </h3>
-        <button onclick="closeChannelBuilder()" class="text-slate-400 hover:text-white">✕</button>
-      </div>
-
-      <!-- Quick Preset Buttons -->
-      <div>
-        <label class="text-xs font-semibold text-cyan-400 uppercase tracking-wider">✨ Quick Starter Presets</label>
-        <div class="grid grid-cols-3 gap-2 mt-1">
-          <button type="button" onclick="loadPreset('cartoons')" class="px-2 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-200 text-left truncate">
-            📺 90s Cartoons
-          </button>
-          <button type="button" onclick="loadPreset('gaming')" class="px-2 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-200 text-left truncate">
-            👾 Vintage Gaming
-          </button>
-          <button type="button" onclick="loadPreset('scifi')" class="px-2 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-200 text-left truncate">
-            🛸 Retro Sci-Fi
-          </button>
-        </div>
-      </div>
-
-      <div class="flex flex-col gap-3 text-sm">
-        <div class="grid grid-cols-3 gap-3">
-          <div class="col-span-2">
-            <label class="text-xs font-semibold text-slate-400 uppercase">Channel Name</label>
-            <input id="newChName" type="text" placeholder="Retro Movies TV" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-500 mt-1">
-          </div>
-          <div>
-            <label class="text-xs font-semibold text-slate-400 uppercase">Guide Color</label>
-            <input id="newChColor" type="color" value="#38bdf8" class="w-full h-[38px] bg-slate-950 border border-slate-800 rounded-lg p-1 cursor-pointer mt-1">
-          </div>
-        </div>
-
-        <!-- Description Input -->
+      <div class="space-y-4">
         <div>
-          <label class="text-xs font-semibold text-slate-400 uppercase">Description</label>
-          <input id="newChDesc" type="text" placeholder="What plays on this channel..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-500 mt-1">
+          <label class="block text-xs text-zinc-400 mb-1">Channel Name</label>
+          <input type="text" id="newChName" placeholder="e.g. Retro Anime & Toonami" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
         </div>
-
-        <!-- Video URLs / IDs Input -->
         <div>
-          <label class="text-xs font-semibold text-slate-400 uppercase">Videos (One archive.org or YouTube URL per line)</label>
-          <textarea id="newChIds" rows="5" spellcheck="false" placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ&#10;popeye_patriotic_popeye&#10;https://archive.org/details/night_of_the_living_dead" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-slate-200 font-mono text-xs focus:outline-none focus:border-cyan-500 mt-1"></textarea>
+          <label class="block text-xs text-zinc-400 mb-1">Description</label>
+          <input type="text" id="newChDesc" placeholder="Classic animated favorites" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+        </div>
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1">Video Items (Archive.org Item ID or YouTube URL per line)</label>
+          <textarea id="newChIds" rows="5" placeholder="X-Play.2011.04.19&#10;yt:v9EdW9ADEZQ&#10;https://archive.org/details/my-custom-video" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-500"></textarea>
         </div>
 
-        <!-- Action Buttons -->
-        <div class="flex items-center justify-between pt-3 border-t border-slate-800">
-          <button type="button" onclick="testFirstVideo()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-semibold text-xs flex items-center gap-1.5">
-            <i class="fa-solid fa-vial"></i> Test First Link
-          </button>
-          <div class="flex gap-2">
-            <button type="button" onclick="closeChannelBuilder()" class="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 font-semibold text-sm hover:bg-slate-700">Cancel</button>
-            <button type="button" onclick="saveNewChannel()" class="px-4 py-2 rounded-lg bg-cyan-500 text-slate-950 font-bold text-sm hover:bg-cyan-400 flex items-center gap-1.5">
-              <i class="fa-solid fa-floppy-disk"></i> Save Channel
-            </button>
-          </div>
+        <div class="pt-2 flex justify-end space-x-3">
+          <button onclick="closeChannelBuilder()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 py-2 rounded text-sm transition">Cancel</button>
+          <button onclick="saveNewChannel()" class="bg-amber-500 hover:bg-amber-400 text-black font-bold px-4 py-2 rounded text-sm transition">Save Channel</button>
+        </div>
+
+        <hr class="border-zinc-800 my-4">
+
+        <div>
+          <h4 class="text-sm font-bold text-zinc-300 mb-2">Manage Existing Channels</h4>
+          <div id="manageChannelsList" class="space-y-2 max-h-40 overflow-y-auto pr-1"></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ================= CHANNELS.JSON MANAGER & GITHUB AUTO-SYNC MODAL ================= -->
-  <div id="jsonModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-2xl w-full flex flex-col gap-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
-          <i class="fa-solid fa-arrows-rotate text-cyan-400"></i> GitHub Auto-Sync & channels.json Manager
-        </h3>
-        <button onclick="closeJsonManager()" class="text-slate-400 hover:text-white">✕</button>
+  <!-- JSON & GitHub Sync Modal -->
+  <div id="jsonModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-zinc-900 border border-zinc-700 rounded-xl max-w-xl w-full p-6 shadow-2xl">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold text-amber-400 vt323">CHANNELS.JSON & GITHUB SYNC</h3>
+        <button onclick="closeJsonManager()" class="text-zinc-400 hover:text-white">✕</button>
       </div>
 
-      <!-- Auto-Commit via GitHub API Form -->
-      <div class="bg-cyan-950/40 border border-cyan-800/60 rounded-xl p-4 flex flex-col gap-3">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
-            <i class="fa-brands fa-github text-sm"></i> Auto-Update GitHub Repository
-          </span>
-          <span class="text-[10px] text-slate-400 font-mono-tech">Instant GitHub Pages Sync</span>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1">GitHub Repository (username/repo)</label>
+          <input type="text" id="ghRepo" placeholder="e.g. johndoe/archive-tv" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-500">
         </div>
-        <p class="text-xs text-slate-300 leading-relaxed">
-          Connect your GitHub repository to update <code class="bg-slate-950 text-cyan-300 px-1 py-0.5 rounded font-mono text-[11px]">channels.json</code> live without leaving the website.
-        </p>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-          <div>
-            <label class="text-slate-400 font-semibold uppercase text-[10px]">GitHub Repository (user/repo)</label>
-            <input id="ghRepo" type="text" placeholder="username/archive-tv" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 mt-1 focus:outline-none focus:border-cyan-500">
-          </div>
-          <div>
-            <label class="text-slate-400 font-semibold uppercase text-[10px]">Personal Access Token (PAT)</label>
-            <input id="ghToken" type="password" placeholder="ghp_xxxxxxxxxxxx" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 mt-1 focus:outline-none focus:border-cyan-500">
-          </div>
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1">GitHub Personal Access Token (repo scope / Contents write)</label>
+          <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-500">
         </div>
-        <div class="flex items-center justify-between mt-1">
-          <span id="ghSyncStatus" class="text-xs font-semibold text-amber-400"></span>
-          <button onclick="pushToGitHub()" class="px-4 py-2 rounded-lg bg-emerald-500 text-slate-950 font-bold text-xs hover:bg-emerald-400 flex items-center gap-1.5 transition">
-            <i class="fa-solid fa-cloud-arrow-up"></i> Auto-Commit to GitHub Now
-          </button>
+        <div class="flex space-x-2">
+          <button onclick="pushToGitHub()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded text-sm transition">Auto-Commit to GitHub</button>
+          <button onclick="downloadJsonFile()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-4 py-2 rounded text-sm transition">Download channels.json</button>
         </div>
-      </div>
 
-      <div class="flex flex-col gap-2">
-        <div class="flex items-center justify-between">
-          <label class="text-xs font-semibold text-slate-400 uppercase">Live Raw channels.json Payload</label>
-          <span id="copyJsonMsg" class="text-xs text-emerald-400 font-semibold"></span>
-        </div>
-        <textarea id="jsonConfigText" rows="6" readonly class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-cyan-300 font-mono text-xs focus:outline-none select-all"></textarea>
-      </div>
+        <hr class="border-zinc-800 my-2">
 
-      <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-800">
-        <div class="flex gap-2">
-          <button onclick="copyJsonConfig()" class="px-4 py-2 rounded-lg bg-cyan-500 text-slate-950 font-bold text-sm hover:bg-cyan-400 flex items-center gap-2">
-            <i class="fa-solid fa-copy"></i> Copy JSON
-          </button>
-          <button onclick="downloadJsonFile()" class="px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 font-semibold text-sm hover:bg-slate-700 flex items-center gap-2">
-            <i class="fa-solid fa-download"></i> Download channels.json
-          </button>
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1">channels.json Payload Preview</label>
+          <textarea id="jsonPayloadPreview" rows="6" readonly class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-xs text-amber-300 font-mono"></textarea>
         </div>
-        <button onclick="closeJsonManager()" class="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 font-semibold text-sm hover:bg-slate-700">Done</button>
       </div>
     </div>
   </div>
 
-  <!-- ================= APPLICATION JAVASCRIPT ================= -->
   <script>
-    /* =========================================================
-       ARCHIVE TV — CATV Headend Engine & State Management
-       ========================================================= */
-
-    const ARCHIVE_EMBED = (id) => `https://archive.org/embed/${encodeURIComponent(id)}`;
-    const ARCHIVE_PAGE  = (id) => `https://archive.org/details/${encodeURIComponent(id)}`;
-    const CHANNELS_CACHE_KEY = "archive-tv-user-channels-v1";
-    const GH_CONFIG_KEY = "archive-tv-gh-settings-v1";
-    const DAY = 86400;
-
-    const state = {
-      channels: [],
-      durations: {},
-      view: "tv",
-      currentChIndex: 0,
-      volume: 0.8,
-      isMuted: false, // Default to unmuted
-      crtFX: true,
-      power: true,
-      autoNext: true,
-      currentEntryKey: null,
-      remoteDigits: "",
-      remoteTimer: null,
-      audioCtx: null,
-      osdTimer: null
-    };
-
-    // Default Fallback Preset Channels if channels.json is unreachable
     const DEFAULT_CHANNELS = [
       {
-        name: "X-Play & Gaming",
-        description: "Classic video game reviews, specials, and TechTV highlights.",
+        name: "X Play & Gaming",
+        description: "Classic video game reviews and retro coverage",
         color: "#38bdf8",
         mode: "loop",
         start: "07:00",
         items: [
-          { id: "X-Play.2011.04.19" },
-          { id: "X-Play.2008.11.26" },
-          { id: "X-Play.Fall.Out.3.Special", title: "X-Play Fallout 3 Special" },
-          { id: "X-Play.2008.10.27" }
+          { id: "X-Play.2011.04.19", title: "X-Play April 19, 2011" },
+          { id: "X-Play.2008.11.26", title: "X-Play November 26, 2008" },
+          { id: "X-Play.2008.08.11", title: "X-Play August 11, 2008" }
         ]
       },
       {
-        name: "Cartoon Overload",
-        description: "Retro animated series, classic shorts, and nostalgia.",
-        color: "#f59e0b",
+        name: "Retro Cartoons",
+        description: "Vintage animation and classic cartoons",
+        color: "#f43f5e",
         mode: "loop",
         start: "07:00",
         items: [
-          { id: "yt:v9EdW9ADEZQ", seconds: 1200, title: "Classic Toon Hour 1" },
-          { id: "popeye_patriotic_popeye", title: "Patriotic Popeye" },
-          { id: "yt:NAWOdnuDBBU", seconds: 1500, title: "Classic Toon Hour 2" }
-        ]
-      },
-      {
-        name: "Retro Sci-Fi & Horror",
-        description: "Vintage sci-fi movies, B-horror classics, and cult cinema.",
-        color: "#10b981",
-        mode: "loop",
-        start: "00:00",
-        items: [
-          { id: "night_of_the_living_dead", seconds: 5760, title: "Night of the Living Dead (1968)" },
-          { id: "house_on_haunted_hill_ipod", seconds: 4500, title: "House on Haunted Hill" }
+          { id: "yt:v9EdW9ADEZQ", title: "Classic Cartoon Feature" },
+          { id: "yt:NAWOdnuDBBU", title: "Vintage Animation Reel" }
         ]
       }
     ];
 
-    /* ---------- Helpers & Utilities ---------- */
-    const $ = (id) => document.getElementById(id);
+    let state = {
+      channels: [],
+      currentChannelIndex: 0,
+      currentItemIndex: 0,
+      isPoweredOn: false,
+      isMuted: false,
+      volume: 0.8,
+      crtEnabled: true,
+      theaterMode: false
+    };
 
-    function esc(s) {
-      return String(s ?? "").replace(/[&<>"']/g, (c) =>
-        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    function $(id) { return document.getElementById(id); }
+
+    function ARCHIVE_EMBED(id) {
+      return `https://archive.org/embed/${encodeURIComponent(id)}`;
     }
 
     function isYT(id) {
-      return typeof id === "string" && id.startsWith("yt:");
+      return id && id.startsWith("yt:");
     }
 
     function ytVid(id) {
-      return id.replace(/^yt:/, "");
+      return id.replace("yt:", "");
     }
 
-    function parseHHMM(str) {
-      if (typeof str !== "string") return 0;
-      const m = str.match(/^(\d{1,2}):(\d{2})$/);
-      if (!m) return 0;
-      return (+m[1]) * 3600 + (+m[2]) * 60;
-    }
-
-    function nowSecs() {
-      const d = new Date();
-      return d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
-    }
-
-    function fmtClock(secs) {
-      const s = ((secs % 86400) + 86400) % 86400;
-      const h24 = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
-      const ampm = h24 >= 12 ? "PM" : "AM";
-      let h = h24 % 12;
-      if (h === 0) h = 12;
-      return `${h}:${String(m).padStart(2, "0")} ${ampm}`;
-    }
-
-    function fmtRange(a, b) {
-      return `${fmtClock(a)} – ${fmtClock(b)}`;
-    }
-
-    function normalizeId(line) {
-      const s = line.trim();
-      if (!s) return "";
-      const yt = s.match(/(?:youtube\.com\/(?:watch\?.*v=|embed\/|live\/|shorts\/)|youtu\.be\/)([\w-]{11})/);
-      if (yt) return "yt:" + yt[1];
-      return s.replace(/.*archive\.org\/(?:details|embed)\//, "").replace(/\/.*$/, "");
-    }
-
-    /* ---------- OSD & TV Control UI Functions ---------- */
-    window.triggerOSD = function() {
-      const osd = $("osdContainer");
-      if (!osd) return;
+    window.onload = function() {
+      loadChannels();
+      setInterval(updateClock, 1000);
       
-      const ch = state.channels[state.currentChIndex];
-      const entry = getLiveEntry(state.currentChIndex);
-      const chNum = String(state.currentChIndex + 1).padStart(2, "0");
-
-      if ($("osdChannelNum")) $("osdChannelNum").textContent = `CH ${chNum}`;
-      if ($("osdChannelName")) $("osdChannelName").textContent = ch ? ch.name.toUpperCase() : "TV MODE";
-      if ($("osdProgramTitle")) $("osdProgramTitle").textContent = entry && entry.item ? (entry.item.title || entry.item.id) : "NO SIGNAL";
-
-      const volPercent = state.isMuted ? 0 : Math.round(state.volume * 10);
-      const volBar = "|".repeat(volPercent) + "-".repeat(10 - volPercent);
-      if ($("osdVolume")) $("osdVolume").textContent = state.isMuted ? "VOL: MUTE" : `VOL ${volBar}`;
-
-      osd.classList.remove("opacity-0");
-      osd.classList.add("opacity-100");
-
-      if (state.osdTimer) clearTimeout(state.osdTimer);
-      state.osdTimer = setTimeout(() => {
-        osd.classList.remove("opacity-100");
-        osd.classList.add("opacity-0");
-      }, 3500);
+      // Load GitHub settings from localStorage if saved
+      const savedRepo = localStorage.getItem("archive_tv_gh_repo");
+      const savedToken = localStorage.getItem("archive_tv_gh_token");
+      if (savedRepo && $("ghRepo")) $("ghRepo").value = savedRepo;
+      if (savedToken && $("ghToken")) $("ghToken").value = savedToken;
     };
 
-    window.switchMainView = function(viewName) {
-      state.view = viewName;
-      ["TV", "Guide", "Now", "Help"].forEach(v => {
-        const sec = $(`view${v}`);
-        const btn = $(`btn${v}View`);
-        if (sec) sec.classList.add("hidden");
-        if (btn) {
-          btn.className = "px-3 py-1.5 rounded-lg text-sm font-semibold border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-2";
+    async function loadChannels() {
+      // 1. Try fetching remote channels.json first
+      try {
+        const res = await fetch("channels.json?t=" + Date.now());
+        if (res.ok) {
+          const remoteData = await res.json();
+          if (Array.isArray(remoteData) && remoteData.length > 0) {
+            state.channels = remoteData;
+            localStorage.setItem("archive_tv_channels", JSON.stringify(state.channels));
+            renderSideChannelList();
+            return;
+          }
         }
-      });
-
-      const capView = viewName.charAt(0).toUpperCase() + viewName.slice(1);
-      const activeSec = $(`view${capView}`);
-      const activeBtn = $(`btn${capView}View`);
-
-      if (activeSec) {
-        activeSec.classList.remove("hidden");
-        if (viewName === "now") activeSec.classList.add("grid");
-        else activeSec.classList.add("flex");
-      }
-      if (activeBtn) {
-        activeBtn.className = "px-3 py-1.5 rounded-lg text-sm font-semibold border border-cyan-500/50 bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 transition flex items-center gap-2";
+      } catch(e) {
+        // Fallback to local storage
       }
 
-      if (viewName === "guide") renderGuide();
-      if (viewName === "now") renderNowView();
-    };
+      // 2. Fallback to localStorage or defaults
+      const saved = localStorage.getItem("archive_tv_channels");
+      if (saved) {
+        try {
+          state.channels = JSON.parse(saved);
+        } catch(e) {
+          state.channels = DEFAULT_CHANNELS;
+        }
+      } else {
+        state.channels = DEFAULT_CHANNELS;
+      }
+      renderSideChannelList();
+    }
 
-    window.zapChannel = function(dir) {
-      if (!state.channels.length) return;
-      let nextIndex = (state.currentChIndex + dir) % state.channels.length;
-      if (nextIndex < 0) nextIndex = state.channels.length - 1;
-      tuneChannel(nextIndex);
-    };
+    function saveChannelsStorage() {
+      localStorage.setItem("archive_tv_channels", JSON.stringify(state.channels));
+      renderSideChannelList();
+      renderManageChannelsList();
+    }
+
+    function updateClock() {
+      const now = new Date();
+      const timeStr = now.toTimeString().split(' ')[0];
+      const clockEl = $("currentTimeDisplay");
+      if (clockEl) clockEl.innerText = timeStr;
+    }
 
     window.toggleTVPower = function() {
-      state.power = !state.power;
-      const btn = $("btnPower");
-      const wrapper = $("crtWrapper");
-      if (state.power) {
-        if (btn) btn.className = "w-12 h-12 rounded-full bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold text-lg flex items-center justify-center shadow-lg border-2 border-red-400 transition";
-        if (wrapper) wrapper.style.filter = "none";
-        tuneChannel(state.currentChIndex);
+      state.isPoweredOn = !state.isPoweredOn;
+      const splash = $("splashScreen");
+      const powerBtn = $("powerBtn");
+      if (state.isPoweredOn) {
+        splash.classList.add("hidden");
+        powerBtn.classList.remove("bg-red-600");
+        powerBtn.classList.add("bg-emerald-600");
+        tuneChannel(state.currentChannelIndex || 0);
       } else {
-        if (btn) btn.className = "w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-500 font-bold text-lg flex items-center justify-center border-2 border-slate-700 transition";
-        if (wrapper) wrapper.style.filter = "brightness(0)";
+        splash.classList.remove("hidden");
+        powerBtn.classList.remove("bg-emerald-600");
+        powerBtn.classList.add("bg-red-600");
         const vid = $("tvVideo");
         const iframe = $("tvIframe");
-        if (vid) vid.pause();
-        if (iframe) iframe.src = "about:blank";
+        if (vid) vid.pause(), vid.classList.add("hidden");
+        if (iframe) iframe.src = "", iframe.classList.add("hidden");
       }
     };
 
-    window.adjustVolume = function(delta) {
-      state.volume = Math.min(1, Math.max(0, state.volume + delta));
-      if (state.volume > 0) state.isMuted = false;
-      else state.isMuted = true;
+    window.tuneChannel = function(idx) {
+      if (idx < 0) idx = state.channels.length - 1;
+      if (idx >= state.channels.length) idx = 0;
       
-      const vid = $("tvVideo");
-      if (vid) {
-        vid.volume = state.volume;
-        vid.muted = state.isMuted;
+      state.currentChannelIndex = idx;
+      state.currentItemIndex = 0;
+      state.isPoweredOn = true;
+      
+      const splash = $("splashScreen");
+      if (splash) splash.classList.add("hidden");
+      const powerBtn = $("powerBtn");
+      if (powerBtn) {
+        powerBtn.classList.remove("bg-red-600");
+        powerBtn.classList.add("bg-emerald-600");
       }
-      
-      const btn = $("btnMute");
-      if (btn) btn.textContent = state.isMuted ? "UNMUTE" : "MUTE";
-      
-      const banner = $("unmuteBanner");
-      if (banner && !state.isMuted) banner.classList.add("hidden");
 
-      const bar = $("volumeBar");
-      if (bar) bar.style.width = `${state.volume * 100}%`;
+      playCurrentItem();
       triggerOSD();
     };
 
-    window.toggleMute = function() {
-      state.isMuted = !state.isMuted;
-      const vid = $("tvVideo");
-      if (vid) vid.muted = state.isMuted;
-      const btn = $("btnMute");
-      if (btn) btn.textContent = state.isMuted ? "UNMUTE" : "MUTE";
-      
-      const banner = $("unmuteBanner");
-      if (banner && !state.isMuted) banner.classList.add("hidden");
-      triggerOSD();
-    };
+    function playCurrentItem() {
+      const ch = state.channels[state.currentChannelIndex];
+      if (!ch || !ch.items || ch.items.length === 0) return;
+      const it = ch.items[state.currentItemIndex || 0];
 
-    window.unmuteAudio = function() {
-      state.isMuted = false;
-      if (state.volume === 0) state.volume = 0.8;
-      
-      const vid = $("tvVideo");
-      if (vid) {
-        vid.muted = false;
-        vid.volume = state.volume;
-      }
-      
-      const btn = $("btnMute");
-      if (btn) btn.textContent = "MUTE";
-
-      const banner = $("unmuteBanner");
-      if (banner) banner.classList.add("hidden");
-
-      if (state.audioCtx && state.audioCtx.state === "suspended") {
-        state.audioCtx.resume();
-      }
-      triggerOSD();
-    };
-
-    window.toggleMute = function() {
-      state.isMuted = !state.isMuted;
-      const vid = $("tvVideo");
-      if (vid) vid.muted = state.isMuted;
-      const btn = $("btnMute");
-      if (btn) btn.textContent = state.isMuted ? "UNMUTE" : "MUTE";
-      triggerOSD();
-    };
-
-    window.unmuteAudio = function() {
-      state.isMuted = false;
-      const vid = $("tvVideo");
-      if (vid) vid.muted = false;
-      const banner = $("unmuteBanner");
-      if (banner) banner.classList.add("hidden");
-      triggerOSD();
-    };
-
-    window.toggleCRTEffects = function() {
-      state.crtFX = !state.crtFX;
-      const wrapper = $("crtWrapper");
-      const indicator = $("crtStatusIndicator");
-      if (wrapper) {
-        if (state.crtFX) wrapper.classList.add("scanline-flicker");
-        else wrapper.classList.remove("scanline-flicker");
-      }
-      if (indicator) indicator.textContent = state.crtFX ? "MODE: CRT FX ACTIVE" : "MODE: FLAT DISPLAY";
-    };
-
-    window.toggleTheaterMode = function() {
-      document.body.classList.toggle("bg-black");
-    };
-
-    window.toggleRemoteModal = function() {
-      const modal = $("remoteModal");
-      if (!modal) return;
-      const isHidden = modal.classList.contains("pointer-events-none");
-      if (isHidden) {
-        modal.classList.remove("translate-y-full", "opacity-0", "pointer-events-none");
-      } else {
-        modal.classList.add("translate-y-full", "opacity-0", "pointer-events-none");
-      }
-    };
-
-    window.pressRemoteDigit = function(digit) {
-      state.remoteDigits += digit;
-      if ($("remoteDigitDisplay")) $("remoteDigitDisplay").textContent = state.remoteDigits;
-
-      if (state.remoteTimer) clearTimeout(state.remoteTimer);
-      state.remoteTimer = setTimeout(() => {
-        const targetCh = parseInt(state.remoteDigits, 10) - 1;
-        if (!isNaN(targetCh) && targetCh >= 0 && targetCh < state.channels.length) {
-          tuneChannel(targetCh);
-        }
-        state.remoteDigits = "";
-        if ($("remoteDigitDisplay")) $("remoteDigitDisplay").textContent = "--";
-      }, 1200);
-    };
-
-    window.openChannelBuilder = function() {
-      const modal = $("builderModal");
-      if (modal) modal.classList.remove("hidden"), modal.classList.add("flex");
-    };
-
-    window.closeChannelBuilder = function() {
-      const modal = $("builderModal");
-      if (modal) modal.classList.add("hidden"), modal.classList.remove("flex");
-    };
-
-    window.loadPreset = function(type) {
-      if (type === "cartoons") {
-        if ($("newChName")) $("newChName").value = "90s Cartoon Classics";
-        if ($("newChDesc")) $("newChDesc").value = "Classic animated toon hour broadcasts.";
-        if ($("newChColor")) $("newChColor").value = "#f59e0b";
-        if ($("newChIds")) $("newChIds").value = "yt:v9EdW9ADEZQ\npopeye_patriotic_popeye\nyt:NAWOdnuDBBU";
-      } else if (type === "gaming") {
-        if ($("newChName")) $("newChName").value = "G4 & TechTV Rewind";
-        if ($("newChDesc")) $("newChDesc").value = "Video game reviews, specials, and tech history.";
-        if ($("newChColor")) $("newChColor").value = "#38bdf8";
-        if ($("newChIds")) $("newChIds").value = "X-Play.2011.04.19\nX-Play.Fall.Out.3.Special\nX-Play.2008.10.27";
-      } else if (type === "scifi") {
-        if ($("newChName")) $("newChName").value = "Sci-Fi Midnight Theater";
-        if ($("newChDesc")) $("newChDesc").value = "Classic B-movies, horror, and cult Sci-Fi.";
-        if ($("newChColor")) $("newChColor").value = "#10b981";
-        if ($("newChIds")) $("newChIds").value = "night_of_the_living_dead\nhouse_on_haunted_hill_ipod";
-      }
-    };
-
-    window.testFirstVideo = function() {
-      const idsRaw = $("newChIds") ? $("newChIds").value : "";
-      const lines = idsRaw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-      if (!lines.length) return alert("Please enter at least one video URL or ID.");
-      const firstId = normalizeId(lines[0]);
-      window.open(isYT(firstId) ? `https://www.youtube.com/watch?v=${ytVid(firstId)}` : ARCHIVE_PAGE(firstId), "_blank");
-    };
-
-    window.saveNewChannel = function() {
-      const name = $("newChName") ? $("newChName").value.trim() : "Custom Channel";
-      const desc = $("newChDesc") ? $("newChDesc").value.trim() : "";
-      const color = $("newChColor") ? $("newChColor").value : "#38bdf8";
-      const idsRaw = $("newChIds") ? $("newChIds").value : "";
-      const items = idsRaw.split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(id => ({ id: normalizeId(id) }));
-
-      if (!items.length) return alert("Please add at least one valid video link or identifier.");
-
-      const newCh = { name, description: desc, color, mode: "loop", start: "07:00", items };
-      state.channels.push(newCh);
-
-      try {
-        localStorage.setItem(CHANNELS_CACHE_KEY, JSON.stringify(state.channels));
-      } catch (e) {}
-
-      closeChannelBuilder();
-      renderSideChannelList();
-      tuneChannel(state.channels.length - 1);
-      updateJsonConfigPayload();
-    };
-
-    window.openJsonManager = function() {
-      updateJsonConfigPayload();
-      const storedGH = localStorage.getItem(GH_CONFIG_KEY);
-      if (storedGH) {
-        try {
-          const parsed = JSON.parse(storedGH);
-          if ($("ghRepo") && parsed.repo) $("ghRepo").value = parsed.repo;
-          if ($("ghToken") && parsed.token) $("ghToken").value = parsed.token;
-        } catch (e) {}
-      }
-      const modal = $("jsonModal");
-      if (modal) modal.classList.remove("hidden"), modal.classList.add("flex");
-    };
-
-    window.closeJsonManager = function() {
-      const modal = $("jsonModal");
-      if (modal) modal.classList.add("hidden"), modal.classList.remove("flex");
-    };
-
-    function updateJsonConfigPayload() {
-      const payload = { timezone: "local", channels: state.channels };
-      if ($("jsonConfigText")) $("jsonConfigText").value = JSON.stringify(payload, null, 2);
-    }
-
-    window.copyJsonConfig = function() {
-      const txt = $("jsonConfigText");
-      if (!txt) return;
-      txt.select();
-      document.execCommand("copy");
-      if ($("copyJsonMsg")) {
-        $("copyJsonMsg").textContent = "✓ Copied to clipboard!";
-        setTimeout(() => $("copyJsonMsg").textContent = "", 3000);
-      }
-    };
-
-    /* ---------- Web Audio Static Noise Sound Synthesizer ---------- */
-    function playStaticSound(durationMs = 250) {
-      try {
-        if (!state.audioCtx) {
-          const AudioCtx = window.AudioContext || window.webkitAudioContext;
-          if (AudioCtx) state.audioCtx = new AudioCtx();
-        }
-        if (!state.audioCtx || state.isMuted || !state.power) return;
-        if (state.audioCtx.state === "suspended") state.audioCtx.resume();
-
-        const bufferSize = state.audioCtx.sampleRate * (durationMs / 1000);
-        const buffer = state.audioCtx.createBuffer(1, bufferSize, state.audioCtx.sampleRate);
-        const output = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-          output[i] = Math.random() * 2 - 1;
-        }
-
-        const whiteNoise = state.audioCtx.createBufferSource();
-        whiteNoise.buffer = buffer;
-
-        const gainNode = state.audioCtx.createGain();
-        gainNode.gain.setValueAtTime(0.08 * state.volume, state.audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, state.audioCtx.currentTime + (durationMs / 1000));
-
-        whiteNoise.connect(gainNode);
-        gainNode.connect(state.audioCtx.destination);
-        whiteNoise.start();
-      } catch (e) {
-        /* Audio context not allowed or muted */
-      }
-    }
-
-    /* ---------- Visual Static Noise Generator ---------- */
-    function renderStaticNoise() {
-      const canvas = $("staticCanvas");
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      canvas.width = 320;
-      canvas.height = 180;
-      const imgData = ctx.createImageData(canvas.width, canvas.height);
-      const buffer32 = new Uint32Array(imgData.data.buffer);
-      for (let i = 0; i < buffer32.length; i++) {
-        if (Math.random() < 0.5) buffer32[i] = 0xff000000;
-        else buffer32[i] = 0xffffffff;
-      }
-      ctx.putImageData(imgData, 0, 0);
-    }
-
-    function triggerStaticEffect(duration = 200) {
-      const canvas = $("staticCanvas");
-      if (!canvas) return;
-      canvas.classList.add("active");
-      renderStaticNoise();
-      playStaticSound(duration);
-      setTimeout(() => {
-        canvas.classList.remove("active");
-      }, duration);
-    }
-
-    /* ---------- Schedule Logic ---------- */
-    function itemSeconds(it) {
-      if (it.seconds) return +it.seconds;
-      if (it.minutes) return +it.minutes * 60;
-      const d = state.durations[it.id];
-      return d ? d.seconds : 1800;
-    }
-
-    function buildSchedule(ch, chIndex) {
-      const out = [];
-      if (!ch || !ch.items || !ch.items.length) return out;
-      const startSec = parseHHMM(ch.start || "00:00");
-      let cur = startSec, k = 0, guard = 0;
-      const n = ch.items.length;
-      while (cur < DAY && guard++ < 300) {
-        const it = ch.items[k];
-        const dur = itemSeconds(it);
-        out.push({
-          start: cur,
-          end: Math.min(cur + dur, DAY),
-          item: it,
-          chIndex,
-          key: `i${k}`
-        });
-        cur += dur;
-        k = (k + 1) % n;
-      }
-      return out;
-    }
-
-    function getLiveEntry(chIndex) {
-      const entries = buildSchedule(state.channels[chIndex], chIndex);
-      const n = nowSecs();
-      return entries.find(e => n >= e.start && n < e.end) || entries[0] || null;
-    }
-
-    /* ---------- Tuning & Video Player ---------- */
-    function tuneChannel(chIndex) {
-      if (chIndex < 0 || chIndex >= state.channels.length) return;
-      state.currentChIndex = chIndex;
-      const ch = state.channels[chIndex];
-      const entry = getLiveEntry(chIndex);
-      state.currentEntryKey = entry ? `${chIndex}-${entry.start}-${entry.item ? entry.item.id : ''}` : null;
-      
-      triggerStaticEffect(220);
-      triggerOSD();
-
-      // Update Side Panel Info
-      const numStr = String(chIndex + 1).padStart(2, "0");
-      if ($("sideChannelTitle")) $("sideChannelTitle").textContent = `CH ${numStr} — ${ch.name}`;
-      if ($("sideChannelDesc")) $("sideChannelDesc").textContent = ch.description || "Archive Cable Broadcast Stream";
-      
       const vid = $("tvVideo");
       const iframe = $("tvIframe");
-      const offAir = $("offAirScreen");
 
-      if (!entry || !entry.item) {
-        if (vid) { vid.pause(); vid.classList.add("hidden"); }
-        if (iframe) iframe.classList.add("hidden");
-        if (offAir) offAir.classList.remove("hidden");
-        return;
-      }
-
-      if (offAir) offAir.classList.add("hidden");
-      const it = entry.item;
-      const n = nowSecs();
-      const offset = Math.max(0, n - entry.start);
-
-      if ($("sideProgramName")) $("sideProgramName").textContent = it.title || it.id;
-      if ($("sidePlayTime")) $("sidePlayTime").textContent = fmtRange(entry.start, entry.end);
-
-      const rawId = it.id;
-
-      if (isYT(rawId)) {
-        // YouTube Embed Player
-        if (vid) { vid.pause(); vid.classList.add("hidden"); }
+      if (isYT(it.id)) {
+        if (vid) vid.pause(), vid.classList.add("hidden");
         if (iframe) {
           iframe.classList.remove("hidden");
-          const ytCode = ytVid(rawId);
-          // Load unmuted by default (mute=0)
-          iframe.src = `https://www.youtube-nocookie.com/embed/${ytCode}?autoplay=1&mute=${state.isMuted ? 1 : 0}&start=${Math.floor(offset)}&enablejsapi=1&playsinline=1`;
+          iframe.src = `https://www.youtube-nocookie.com/embed/${ytVid(it.id)}?autoplay=1&mute=0&enablejsapi=1&playsinline=1`;
         }
       } else {
-        // Archive.org Embed / Direct Stream Player
-        const directMp4Url = `https://archive.org/download/${encodeURIComponent(rawId)}/${encodeURIComponent(rawId)}.mp4`;
-        
+        if (iframe) iframe.classList.add("hidden");
         if (vid) {
-          vid.onerror = () => {
-            // Direct MP4 failed -> Fallback cleanly to Archive.org Embed player
-            console.log("Direct MP4 stream fallback to Archive Embed for:", rawId);
+          vid.classList.remove("hidden");
+          vid.src = `https://archive.org/download/${encodeURIComponent(it.id)}/${encodeURIComponent(it.id)}.mp4`;
+          vid.volume = state.volume;
+          vid.muted = state.isMuted;
+          vid.play().catch(() => {
             vid.classList.add("hidden");
             if (iframe) {
               iframe.classList.remove("hidden");
-              iframe.src = `${ARCHIVE_EMBED(rawId)}?autoplay=1&start=${Math.floor(offset)}`;
+              iframe.src = `${ARCHIVE_EMBED(it.id)}?autoplay=1`;
             }
-          };
-          
-          iframe.classList.add("hidden");
-          vid.classList.remove("hidden");
-          vid.src = directMp4Url;
-          vid.currentTime = Math.floor(offset);
-          vid.volume = state.volume;
-          vid.muted = state.isMuted;
-
-          vid.play().then(() => {
-            const banner = $("unmuteBanner");
-            if (banner) banner.classList.add("hidden");
-          }).catch(err => {
-            console.warn("Unmuted autoplay restricted by browser policy. Falling back to muted autoplay with unmute banner:", err);
-            // If browser blocks unmuted sound, play muted and display the unmute banner
-            vid.muted = true;
-            vid.play().catch(() => {
-              vid.classList.add("hidden");
-              if (iframe) {
-                iframe.classList.remove("hidden");
-                iframe.src = `${ARCHIVE_EMBED(rawId)}?autoplay=1&start=${Math.floor(offset)}`;
-              }
-            });
-            const banner = $("unmuteBanner");
-            if (banner && !state.isMuted) banner.classList.remove("hidden");
           });
-        } else if (iframe) {
-          iframe.classList.remove("hidden");
-          iframe.src = `${ARCHIVE_EMBED(rawId)}?autoplay=1&start=${Math.floor(offset)}`;
         }
       }
-
       renderSideChannelList();
     }
 
-    function checkAutoNextSchedule() {
-      if (!state.autoNext || !state.power) return;
-      const currentEntry = getLiveEntry(state.currentChIndex);
-      if (!currentEntry || !currentEntry.item) return;
+    window.zapChannel = function(dir) {
+      let next = state.currentChannelIndex + dir;
+      tuneChannel(next);
+    };
 
-      const newKey = `${state.currentChIndex}-${currentEntry.start}-${currentEntry.item.id}`;
-      if (state.currentEntryKey && state.currentEntryKey !== newKey) {
-        console.log("Schedule block ended — automatically tuning to next program:", currentEntry.item.title || currentEntry.item.id);
-        tuneChannel(state.currentChIndex);
-      }
+    window.adjustVolume = function(val) {
+      state.volume = parseFloat(val);
+      const vid = $("tvVideo");
+      if (vid) vid.volume = state.volume;
+    };
+
+    window.toggleMute = function() {
+      state.isMuted = !state.isMuted;
+      const vid = $("tvVideo");
+      if (vid) vid.muted = state.isMuted;
+      const btn = $("muteBtn");
+      if (btn) btn.innerText = state.isMuted ? "🔇 Unmute" : "🔊 Mute";
+    };
+
+    window.toggleCRTEffects = function() {
+      state.crtEnabled = !state.crtEnabled;
+      const overlay = $("crtOverlay");
+      const btn = $("crtToggleBtn");
+      if (overlay) overlay.style.display = state.crtEnabled ? "block" : "none";
+      if (btn) btn.innerText = state.crtEnabled ? "CRT FX: ON" : "CRT FX: OFF";
+    };
+
+    window.toggleTheaterMode = function() {
+      state.theaterMode = !state.theaterMode;
+    };
+
+    function triggerOSD() {
+      const osd = $("osdBanner");
+      if (!osd) return;
+      const ch = state.channels[state.currentChannelIndex];
+      if (!ch) return;
+      const it = ch.items[state.currentItemIndex || 0];
+
+      $("osdChan").innerText = `CH ${(state.currentChannelIndex + 1).toString().padStart(2, '0')} - ${ch.name}`;
+      $("osdTitle").innerText = it ? it.title : "Live Program";
+
+      osd.classList.remove("opacity-0");
+      setTimeout(() => {
+        osd.classList.add("opacity-0");
+      }, 4000);
     }
 
-    window.toggleAutoNext = function() {
-      state.autoNext = !state.autoNext;
-      const btn = $("btnAutoNext");
-      if (btn) {
-        if (state.autoNext) {
-          btn.className = "px-3 py-1.5 rounded bg-emerald-950 border border-emerald-800 text-emerald-300 text-xs font-semibold hover:bg-emerald-900 transition flex items-center gap-1.5";
-          btn.innerHTML = `<i class="fa-solid fa-forward"></i> Auto-Next: ON`;
-        } else {
-          btn.className = "px-3 py-1.5 rounded bg-slate-800 border border-slate-700 text-slate-400 text-xs font-semibold hover:bg-slate-700 transition flex items-center gap-1.5";
-          btn.innerHTML = `<i class="fa-solid fa-pause"></i> Auto-Next: OFF`;
-        }
+    function renderSideChannelList() {
+      const list = $("sideChannelList");
+      if (!list) return;
+      list.innerHTML = "";
+
+      state.channels.forEach((ch, idx) => {
+        const isCurrent = idx === state.currentChannelIndex && state.isPoweredOn;
+        const item = document.createElement("div");
+        item.className = `p-3 rounded cursor-pointer transition flex items-center justify-between ${isCurrent ? 'bg-amber-500/10 border border-amber-500/40 text-amber-300' : 'hover:bg-zinc-800 text-zinc-300'}`;
+        item.onclick = () => tuneChannel(idx);
+
+        item.innerHTML = `
+          <div class="flex items-center space-x-3">
+            <span class="font-mono text-xs font-bold px-2 py-1 rounded bg-zinc-800 text-amber-400">CH ${(idx+1).toString().padStart(2, '0')}</span>
+            <div>
+              <div class="text-sm font-bold">${ch.name}</div>
+              <div class="text-xs text-zinc-400 truncate max-w-[160px]">${ch.description || ''}</div>
+            </div>
+          </div>
+          <button onclick="event.stopPropagation(); removeChannel(${idx})" class="text-zinc-500 hover:text-red-400 p-1 text-xs" title="Delete Channel">🗑️</button>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    window.openChannelBuilder = function() {
+      $("builderModal").classList.remove("hidden");
+      renderManageChannelsList();
+    };
+
+    window.closeChannelBuilder = function() {
+      $("builderModal").classList.add("hidden");
+    };
+
+    function renderManageChannelsList() {
+      const mList = $("manageChannelsList");
+      if (!mList) return;
+      mList.innerHTML = "";
+
+      state.channels.forEach((ch, idx) => {
+        const row = document.createElement("div");
+        row.className = "flex items-center justify-between bg-zinc-950 p-2 rounded border border-zinc-800 text-sm";
+        row.innerHTML = `
+          <span class="truncate text-zinc-300">CH ${(idx+1)}: ${ch.name}</span>
+          <button onclick="removeChannel(${idx})" class="bg-red-900/40 hover:bg-red-900 text-red-200 px-2 py-1 rounded text-xs transition">Delete</button>
+        `;
+        mList.appendChild(row);
+      });
+    }
+
+    window.removeChannel = function(idx) {
+      if (state.channels.length <= 1) {
+        alert("You must keep at least one channel.");
+        return;
       }
-    };
-
-    window.downloadJsonFile = function() {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ timezone: "local", channels: state.channels }, null, 2));
-      const anchor = document.createElement("a");
-      anchor.setAttribute("href", dataStr);
-      anchor.setAttribute("download", "channels.json");
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-    };
-
-    window.pushToGitHub = async function() {
-      const repo = $("ghRepo") ? $("ghRepo").value.trim() : "";
-      const token = $("ghToken") ? $("ghToken").value.trim() : "";
-      const status = $("ghSyncStatus");
-
-      if (!repo || !token) {
-        if (status) status.textContent = "Please enter both GitHub Repo (user/repo) and PAT Token.";
+      
+      const pwd = prompt("Enter password to delete channel:");
+      if (pwd !== "Skye2694!") {
+        if (pwd !== null) alert("Incorrect password!");
         return;
       }
 
-      try {
-        localStorage.setItem(GH_CONFIG_KEY, JSON.stringify({ repo, token }));
-      } catch (e) {}
+      state.channels.splice(idx, 1);
+      if (state.currentChannelIndex >= state.channels.length) {
+        state.currentChannelIndex = state.channels.length - 1;
+      }
+      saveChannelsStorage();
+      if (state.isPoweredOn) playCurrentItem();
+    };
 
-      if (status) status.textContent = "Connecting to GitHub API...";
+    window.saveNewChannel = function() {
+      const name = $("newChName").value.trim();
+      const desc = $("newChDesc").value.trim();
+      const rawIds = $("newChIds").value.trim();
+
+      if (!name || !rawIds) {
+        alert("Please enter a channel name and at least one item ID or URL.");
+        return;
+      }
+
+      const lines = rawIds.split('\n').map(l => l.trim()).filter(Boolean);
+      const items = lines.map(line => {
+        let id = line;
+        if (line.includes("archive.org/details/")) {
+          id = line.split("details/")[1].split("/")[0];
+        } else if (line.includes("youtube.com/watch?v=")) {
+          const urlParams = new URLSearchParams(line.split('?')[1]);
+          id = "yt:" + urlParams.get('v');
+        } else if (line.length === 11 && !line.includes('.')) {
+          id = "yt:" + line;
+        }
+        return { id: id, title: id };
+      });
+
+      state.channels.push({
+        name: name,
+        description: desc,
+        color: "#38bdf8",
+        mode: "loop",
+        start: "07:00",
+        items: items
+      });
+
+      saveChannelsStorage();
+      closeChannelBuilder();
+      $("newChName").value = "";
+      $("newChDesc").value = "";
+      $("newChIds").value = "";
+      tuneChannel(state.channels.length - 1);
+    };
+
+    window.openJsonManager = function() {
+      $("jsonModal").classList.remove("hidden");
+      $("jsonPayloadPreview").value = JSON.stringify(state.channels, null, 2);
+    };
+
+    window.closeJsonManager = function() {
+      $("jsonModal").classList.add("hidden");
+    };
+
+    window.downloadJsonFile = function() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state.channels, null, 2));
+      const dlAnchor = document.createElement('a');
+      dlAnchor.setAttribute("href", dataStr);
+      dlAnchor.setAttribute("download", "channels.json");
+      document.body.appendChild(dlAnchor);
+      dlAnchor.click();
+      dlAnchor.remove();
+    };
+
+    window.pushToGitHub = async function() {
+      const pwd = prompt("Enter password for GitHub Sync:");
+      if (pwd !== "Skye2694!") {
+        if (pwd !== null) alert("Incorrect password!");
+        return;
+      }
+
+      const repo = $("ghRepo").value.trim();
+      const token = $("ghToken").value.trim();
+      if (!repo || !token) {
+        alert("Please enter your GitHub repository (username/repo) and Personal Access Token.");
+        return;
+      }
+
+      localStorage.setItem("archive_tv_gh_repo", repo);
+      localStorage.setItem("archive_tv_gh_token", token);
+
+      const contentJson = JSON.stringify(state.channels, null, 2);
+      const encodedContent = btoa(unescape(encodeURIComponent(contentJson)));
+      const apiUrl = `https://api.github.com/repos/${repo}/contents/channels.json`;
 
       try {
-        const url = `https://api.github.com/repos/${repo}/contents/channels.json`;
+        // 1. Get existing file SHA if it exists (required by GitHub API for updates)
         let sha = null;
-        try {
-          const getRes = await fetch(url, { headers: { Authorization: `token ${token}` } });
-          if (getRes.ok) {
-            const getData = await getRes.json();
-            sha = getData.sha;
-          }
-        } catch (e) {}
+        const getRes = await fetch(apiUrl, {
+          headers: { "Authorization": `token ${token}` }
+        });
+        if (getRes.ok) {
+          const fileData = await getRes.json();
+          sha = fileData.sha;
+        }
 
-        const content = btoa(unescape(encodeURIComponent(JSON.stringify({ timezone: "local", channels: state.channels }, null, 2))));
-        const body = { message: "Update channels.json via Archive TV App", content };
-        if (sha) body.sha = sha;
-
-        const putRes = await fetch(url, {
+        // 2. Commit updated channels.json
+        const putRes = await fetch(apiUrl, {
           method: "PUT",
           headers: {
-            Authorization: `token ${token}`,
+            "Authorization": `token ${token}`,
             "Content-Type": "application/json"
           },
-          body: JSON.stringify(body)
+          body: JSON.stringify({
+            message: "Update channels.json via Archive TV Builder",
+            content: encodedContent,
+            sha: sha
+          })
         });
 
         if (putRes.ok) {
-          if (status) {
-            status.className = "text-xs font-semibold text-emerald-400";
-            status.textContent = "✓ Successfully committed channels.json to GitHub!";
-          }
+          alert("Success! channels.json was successfully committed to your GitHub repository.");
+          closeJsonManager();
         } else {
-          const errData = await putRes.json();
-          throw new Error(errData.message || "Failed to push");
+          const err = await putRes.json();
+          alert("Commit Failed: " + (err.message || "Check your repository name and token permissions."));
         }
-      } catch (e) {
-        if (status) {
-          status.className = "text-xs font-semibold text-red-400";
-          status.textContent = `❌ Commit Failed: ${e.message} (Verify PAT has "repo" scope permissions)`;
-        }
+      } catch(e) {
+        alert("Network Error committing to GitHub: " + e.message);
       }
     };
-
-    /* ---------- Render UI Views ---------- */
-    function renderSideChannelList() {
-      const container = $("sideChannelList");
-      if (!container) return;
-      container.innerHTML = state.channels.map((c, i) => {
-        const isCur = i === state.currentChIndex;
-        return `
-          <button onclick="tuneChannel(${i})" class="w-full text-left p-2 rounded-lg border ${isCur ? "bg-cyan-950/60 border-cyan-500/80 text-cyan-300" : "bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800"} flex items-center gap-2 text-xs transition">
-            <span class="w-2 h-2 rounded-full" style="background:${c.color || '#38bdf8'}"></span>
-            <span class="font-mono-tech text-slate-500 font-bold">CH ${String(i+1).padStart(2,'0')}</span>
-            <span class="font-semibold truncate">${esc(c.name)}</span>
-          </button>
-        `;
-      }).join("");
-    }
-
-    function renderGuide() {
-      const ruler = $("guideRuler");
-      if (!ruler) return;
-      ruler.innerHTML = "";
-      for (let h = 0; h < 24; h += 3) {
-        const div = document.createElement("div");
-        div.className = "absolute font-mono-tech text-slate-400 text-xs";
-        div.style.left = `calc(200px + ${(h / 24) * 100}% * (100% - 200px) / 100%)`;
-        div.textContent = fmtClock(h * 3600);
-        ruler.appendChild(div);
-      }
-
-      const rowsContainer = $("guideRows");
-      if (!rowsContainer) return;
-      rowsContainer.innerHTML = state.channels.map((ch, i) => {
-        const entries = buildSchedule(ch, i);
-        return `
-          <div class="guide-table-row relative flex items-center bg-slate-900 border-b border-slate-800">
-            <div onclick="tuneChannel(${i}); switchMainView('tv');" class="w-[200px] h-full bg-slate-950 border-r border-slate-800 p-2 flex items-center gap-2 cursor-pointer hover:bg-slate-800 transition z-20">
-              <span class="w-2.5 h-2.5 rounded-full" style="background:${ch.color || '#38bdf8'}"></span>
-              <div class="truncate">
-                <div class="text-xs font-bold text-slate-200">CH ${String(i+1).padStart(2,'0')} - ${esc(ch.name)}</div>
-                <div class="text-[10px] text-slate-500 truncate">${esc(ch.description || '')}</div>
-              </div>
-            </div>
-            <div class="flex-1 h-full relative">
-              ${entries.map(e => `
-                <div onclick="tuneChannel(${i}); switchMainView('tv');" class="block-program bg-slate-800 border border-slate-700 text-slate-200" style="left:${(e.start/DAY)*100}%; width:${((e.end-e.start)/DAY)*100}%;">
-                  <div class="font-bold text-xs truncate">${esc(e.item.title || e.item.id)}</div>
-                  <div class="text-[10px] text-slate-400 font-mono-tech">${fmtRange(e.start, e.end)}</div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      const nowLine = $("guideNowLine");
-      if (nowLine) {
-        const n = nowSecs();
-        nowLine.style.left = `calc(200px + ${(n / DAY) * 100}% * (100% - 200px) / 100%)`;
-      }
-    }
-
-    function renderNowView() {
-      const container = $("viewNow");
-      if (!container) return;
-      container.innerHTML = state.channels.map((ch, i) => {
-        const entry = getLiveEntry(i);
-        return `
-          <div onclick="tuneChannel(${i}); switchMainView('tv');" class="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer hover:border-cyan-500 transition flex flex-col gap-2">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-mono-tech font-bold text-slate-500">CH ${String(i+1).padStart(2,'0')}</span>
-              <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold border border-emerald-500/40">LIVE</span>
-            </div>
-            <h3 class="font-bold text-slate-100 text-base">${esc(ch.name)}</h3>
-            <div class="text-xs text-cyan-400 font-bold mt-1">${entry && entry.item ? esc(entry.item.title || entry.item.id) : "Off-Air"}</div>
-            <div class="text-[11px] text-slate-400 font-mono-tech">${entry ? fmtRange(entry.start, entry.end) : "--:--"}</div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    /* ---------- Clock Initialization ---------- */
-    function startClock() {
-      setInterval(() => {
-        const d = new Date();
-        const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-        if ($("liveClock")) $("liveClock").textContent = timeStr;
-        checkAutoNextSchedule();
-      }, 1000);
-    }
-
-    /* ---------- Init App ---------- */
-    window.addEventListener("DOMContentLoaded", async () => {
-      try {
-        const cached = localStorage.getItem(CHANNELS_CACHE_KEY);
-        if (cached) {
-          state.channels = JSON.parse(cached);
-        } else {
-          const res = await fetch("channels.json");
-          if (res.ok) {
-            const data = await res.json();
-            state.channels = data.channels || DEFAULT_CHANNELS;
-          } else {
-            state.channels = DEFAULT_CHANNELS;
-          }
-        }
-      } catch (e) {
-        state.channels = DEFAULT_CHANNELS;
-      }
-
-      startClock();
-      tuneChannel(0);
-    });
   </script>
 </body>
 </html>
