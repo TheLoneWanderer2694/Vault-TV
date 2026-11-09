@@ -76,7 +76,10 @@
               <span class="text-zinc-500">|</span>
               <span id="osdTitle" class="truncate max-w-xs">Loading program...</span>
             </div>
-            <div class="text-xs text-zinc-400 mt-0.5" id="osdSub">ARCHIVE NETWORK</div>
+            <div class="flex items-center justify-between text-xs text-zinc-400 mt-1 space-x-4">
+              <span id="osdTimeRange">00:00 - 00:30</span>
+              <span id="osdSub">ARCHIVE NETWORK</span>
+            </div>
           </div>
 
           <!-- Splash Screen / Blank State -->
@@ -364,16 +367,28 @@
       const now = new Date();
       const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
       
-      // Assume each program item lasts approx 30 minutes (1800 seconds) if not specified
-      const itemDuration = ch.itemDuration || 1800; 
-      const totalChannelDuration = ch.items.length * itemDuration;
+      // Calculate cumulative durations for each item (default 30 mins = 1800s if not specified)
+      let cumulativeSeconds = 0;
+      const itemDurations = ch.items.map(item => (item.duration || 30) * 60);
+      const totalChannelDuration = itemDurations.reduce((acc, curr) => acc + curr, 0);
       const daySeconds = currentSeconds % totalChannelDuration;
 
-      let targetItemIdx = Math.floor(daySeconds / itemDuration);
-      if (targetItemIdx >= ch.items.length) targetItemIdx = ch.items.length - 1;
-      state.currentItemIndex = targetItemIdx;
+      let targetItemIdx = 0;
+      let elapsedInItem = daySeconds;
+      
+      for (let i = 0; i < itemDurations.length; i++) {
+        if (elapsedInItem < itemDurations[i]) {
+          targetItemIdx = i;
+          break;
+        }
+        elapsedInItem -= itemDurations[i];
+        if (i === itemDurations.length - 1) {
+          targetItemIdx = i;
+        }
+      }
 
-      const offset = daySeconds % itemDuration;
+      state.currentItemIndex = targetItemIdx;
+      const offset = elapsedInItem;
       const it = ch.items[targetItemIdx];
 
       const vid = $("tvVideo");
@@ -442,6 +457,7 @@
 
       $("osdChan").innerText = `CH ${(state.currentChannelIndex + 1).toString().padStart(2, '0')} - ${ch.name}`;
       $("osdTitle").innerText = it ? it.title : "Live Program";
+      if ($("osdTimeRange")) $("osdTimeRange").innerText = state.currentProgramTimeRange || "";
 
       osd.classList.remove("opacity-0");
       setTimeout(() => {
@@ -483,14 +499,29 @@
         const chBlock = document.createElement("div");
         chBlock.className = "bg-zinc-950 border border-zinc-800 rounded-xl p-4";
         
+        // Calculate running start/end times for each program
+        let baseTime = new Date();
+        baseTime.setHours(7, 0, 0, 0); // Default channel start at 07:00 AM
+        if (ch.start) {
+          const parts = ch.start.split(':');
+          if (parts.length === 2) {
+            baseTime.setHours(parseInt(parts[0], 10), parseInt(parts[1], 10), 0, 0);
+          }
+        }
+
         let itemsHtml = "";
         ch.items.forEach((item, iIdx) => {
+          const durationMinutes = item.duration || 30;
+          const startTimeStr = baseTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          baseTime.setMinutes(baseTime.getMinutes() + durationMinutes);
+          const endTimeStr = baseTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
           const isPlaying = state.isPoweredOn && state.currentChannelIndex === cIdx && state.currentItemIndex === iIdx;
           itemsHtml += `
             <div onclick="tuneChannel(${cIdx}, ${iIdx})" class="p-3 rounded cursor-pointer transition flex items-center justify-between ${isPlaying ? 'bg-amber-500/20 border border-amber-500/60 text-amber-300' : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300'}">
               <div class="flex items-center space-x-3">
-                <span class="text-xs font-mono px-2 py-1 bg-zinc-950 text-zinc-400 rounded">Prog #${iIdx + 1}</span>
-                <span class="font-bold text-sm truncate max-w-md">${item.title}</span>
+                <span class="text-xs font-mono px-2 py-1 bg-zinc-950 text-amber-400 rounded">${startTimeStr} - ${endTimeStr}</span>
+                <span class="font-bold text-sm truncate max-w-sm">${item.title}</span>
               </div>
               ${isPlaying ? '<span class="text-xs font-bold text-amber-400 uppercase tracking-widest bg-amber-950/80 px-2 py-0.5 rounded">▶ Now Playing</span>' : '<span class="text-xs text-zinc-500 hover:text-amber-300">Tune In →</span>'}
             </div>
