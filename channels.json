@@ -1,5 +1,6 @@
 {
   "_help": "Edit this file to create channels. Each channel: name, description, color (#hex), mode ('loop' = videos repeat in order all day from 'start', or 'fixed' = each item appears at its 'time'). Each item: 'id' = archive.org identifier of a single VIDEO (not a collection — collections like 'g4-xplay' are folders; use the episode identifiers inside them, e.g. 'X-Play.2011.04.19'). Watch out for brackets: every { needs a matching }, and channels are separated by commas.",
+  "_breaks_help": "Mid-program commercials: a channel's 'breaks' can be { \"after\": \"*\", \"file\": \"commercials.json\", \"count\": [1, 2] } — each episode then cuts to a seeded-random pod of 1–2 ads pulled from commercials.json, and resumes at the exact frame it was cut at. Ads can be archive.org or YouTube ('id': 'yt:VIDEO-ID'); lengths resolve automatically (archive via metadata, YouTube via a hidden player at load — or set 'seconds' to skip it). You can also list fixed break videos: 'breaks': [{ \"id\": \"some_ad_id\", \"after\": \"*\" }]. \"after\" matches part of a program's ID or title; omit it or use \"*\" for every program. 'count' can be a number or a [min, max] range.",
   "timezone": "local",
   "_timezone_help": "Set this to \"utc\" when you share the site: then every visitor worldwide sees the same broadcast clock. Keep \"local\" while only you watch. Add \"timezone\": \"utc\" inside a single channel to override just that channel.",
   "ownerPassword": null,
@@ -20,6 +21,30 @@
         { "id": "X-Play.Fall.Out.3.Special", "title": "X-Play Fallout 3 Special" },
         { "id": "X-Play.2008.10.27" },
         { "id": "X-Play.2008.10.29" }
+      ],
+      "breaks": {
+        "after": "*",
+        "file": "commercials.json",
+        "count": [1, 2]
+      }
+    },
+    {
+      "name": "Cartoon OverLoad",
+      "description": "Cartoon all day every day",
+      "color": "#38bdf8",
+      "mode": "loop",
+      "start": "07:00",
+      "items": [
+        { "id": "yt:v9EdW9ADEZQ", "time": "07:00" },
+        { "id": "yt:NAWOdnuDBBU", "time": "08:30" },
+        { "id": "yt:H7U7qOseNeI", "time": "10:00" }
+      ],
+      "breaks": [
+        {
+          "after": "*",
+          "file": "commercials.json",
+          "count": 3
+        }
       ]
     }
   ]

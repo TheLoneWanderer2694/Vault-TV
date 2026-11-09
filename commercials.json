@@ -1,0 +1,6 @@
+{
+  "_help": "Your commercial pool: break pods draw seeded-random ads from this file. Each ad: 'id' = archive.org identifier or 'yt:VIDEO-ID' for YouTube. archive.org lengths resolve automatically; YouTube lengths are auto-detected when the site loads (or give 'seconds' yourself to skip that). Ads that end up without a length are skipped. Add as many ads as you like.",
+  "commercials": [
+    { "id": "yt:wjncEMESg4c", "seconds": 180 }
+  ]
+}

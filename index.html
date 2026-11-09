@@ -72,15 +72,15 @@
       <code>https://archive.org/details/<b>his_girl_friday</b></code> →
       <code>"id": "his_girl_friday"</code>.
       Video lengths are fetched automatically from archive.org, so a channel can be as simple as:
-    </p>
-    <pre>{
+    </p>    <pre>{
   "name": "My Channel",
   "mode": "loop",        // videos repeat in order, all day
   "start": "07:00",      // time the loop begins
   "color": "#38bdf8",    // row color in the guide
   "items": [
     { "id": "popeye_patriotic_popeye" },
-    { "id": "house_on_haunted_hill_ipod", "seconds": 5400 }
+    { "id": "house_on_haunted_hill_ipod", "seconds": 5400 },
+    { "id": "yt:dQw4w9WgXcQ", "seconds": 213 }
   ]
 }</pre>
     <p>
@@ -89,6 +89,54 @@
       <code>"minutes"</code>) only if a video's length can't be auto-detected.
     </p>
 
+    <h3>YouTube videos</h3>
+    <p>
+      Mix YouTube into any channel: give the item an <code>id</code> starting with
+      <code>yt:</code> + the video ID. Lengths are <b>auto-detected</b> — when the
+      page loads, a hidden YouTube player briefly plays each YouTube video (muted,
+      under 2×2 pixels off-screen) and reads its real length. Supply
+      <code>"seconds"</code> yourself only if you already know it; it skips the
+      wait:
+    </p>
+    <pre>{ "id": "yt:dQw4w9WgXcQ", "seconds": 213 }   // seconds optional</pre>
+    <p>
+      Regular YouTube links work too — the <b>＋ New channel</b> builder converts
+      watch/share/shorts URLs into <code>yt:ID</code> automatically.
+    </p>
+
+    <h3>Commercial breaks 📺</h3>
+    <p>
+      Add a <code>"breaks"</code> list (or object) to a channel (loop mode).
+      Episodes cut to commercials <b>in the middle</b> — at a seeded-random
+      point — then <b>resume at the exact frame they were cut at</b>, just like
+      real TV:
+    </p>
+    <pre>"breaks": { "file": "commercials.json", "count": [1, 2] }
+  // every program: pod of 1–2 random ads from commercials.json
+
+"breaks": { "after": "Fall.Out.3", "file": "commercials.json", "count": 2 }
+
+"breaks": [ { "id": "folgers_1", "after": "*" } ]   // fixed ad, old short form</pre>
+    <p>
+      <code>commercials.json</code> next to the site is your ad pool — an array
+      like <code>[ { "id": "some_ad_id" }, … ]</code> or
+      <code>{ "commercials": [ … ] }</code>. Each break occurrence
+      <b>seeded-randomly</b> picks an ad (or several with <code>count</code>,
+      which may be a number or a <code>[min, max]</code> range) — no repeats in
+      one pod. It changes per episode and per day, but every viewer on the same
+      day sees the identical break, so schedules stay in sync.
+      <code>after</code> (optional) matches part of a program's ID or title —
+      omitted means every program. <b>YouTube ads work too:</b> add
+      <code>"id": "yt:VIDEO-ID", "seconds": 31</code> in the pool file (YouTube
+      won't tell a static site the length — the site shows a warning listing
+      any YouTube ad that still needs it, and skips it until you add one).
+      Programs shorter than 5 minutes and YouTube
+      items without a known length are left uncut. Continuation slots show in
+      the guide as <i>"Program — resumes"</i>. The <b>＋ New channel</b> builder
+      can also generate all of this — including a
+      <b>Generate / refresh commercials.json</b> tool that validates your ad
+      list as you build it.
+    </p>
     <h3>Tips</h3>
     <ul>
       <li>Click any program in the guide to watch it in the player at the bottom.</li>
@@ -117,6 +165,46 @@
       <code>"timezone": "utc"</code> in <code>channels.json</code>.
     </p>
 
+    <h3>OBS overlay — link generator 🔴</h3>
+    <p>
+      Show a live "on air" graphic over your stream or recordings with an OBS
+      <b>Browser Source</b> (Sources → ＋ → Browser). Pick the look, generate the
+      link, paste it in. Recommended source size: <code>1920 × 1080</code>
+      (any size works — the overlay pins to the bottom edge or floats top-left).
+      The link works on your local copy and on your hosted site alike.
+    </p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+      <div>
+        <label>Channel</label>
+        <select id="obsCh"><option value="auto">Auto — whatever's live right now</option></select>
+      </div>
+      <div>
+        <label>Style</label>
+        <select id="obsStyle">
+          <option value="bar">Bottom bar (full width)</option>
+          <option value="card">Floating card</option>
+        </select>
+      </div>
+      <div>
+        <label>Size</label>
+        <select id="obsScale">
+          <option value="">Normal</option>
+          <option value="sm">Small</option>
+          <option value="lg">Large</option>
+          <option value="xl">Huge</option>
+        </select>
+      </div>
+      <button id="obsGenBtn" type="button">Generate link</button>
+    </div>
+    <div id="obsOut" style="display:none;margin-top:10px">
+      <input id="obsUrl" readonly spellcheck="false"
+        style="width:100%;background:var(--panel-2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-family:Consolas,monospace">
+      <div style="margin-top:6px">
+        <button id="obsCopy" type="button">⧉ Copy link</button>
+        <span id="obsMsg" style="color:var(--accent);font-size:12px;margin-left:8px"></span>
+      </div>
+    </div>
+
     <h3>Sharing with everyone</h3>
     <h4>Quickest: Netlify Drop</h4>
     <ol>
@@ -141,18 +229,24 @@
 
 <!-- ================= WATCH BAR ================= -->
 <section id="watch" style="display:none">
+  <div id="watchInner">
   <div id="watchHeader">
     <button id="zapPrev" title="Previous channel">◀</button>
     <button id="zapNext" title="Next channel">▶</button>
     <span id="watchTitle"></span>
     <span id="watchChannel" style="color:var(--muted);font-size:12px"></span>
+    <label id="followWrap" title="When a program ends, keep following the schedule">
+      <input type="checkbox" id="followChk" checked> auto-next
+    </label>
     <span style="flex:1"></span>
     <button id="theaterBtn" title="Theater mode">⤢ Theater</button>
     <a id="watchLink" href="#" target="_blank">Open on Archive.org ↗</a>
     <button id="watchClose" onclick="closeWatch()">✕ Close</button>
   </div>
   <div id="watchFrameBox">
-    <iframe id="watchFrame" allow="autoplay; fullscreen; encrypted-media" allowfullscreen></iframe>
+    <iframe id="watchFrame" allow="autoplay; fullscreen; encrypted-media; accelerometer; clipboard-write; picture-in-picture; web-share" allowfullscreen></iframe>
+    <video id="watchVideo" controls playsinline style="display:none"></video>
+  </div>
   </div>
 </section>
 
@@ -181,9 +275,66 @@
         <input id="cfgColor" type="color" value="#38bdf8">
       </div>
     </div>
-    <label>archive.org videos — one identifier or URL per line</label>
+    <label>Videos — one archive.org or YouTube URL/identifier per line</label>
     <textarea id="cfgIds" rows="6" spellcheck="false"
-      placeholder="popeye_patriotic_popeye&#10;https://archive.org/details/night_of_the_living_dead"></textarea>
+      placeholder="popeye_patriotic_popeye&#10;https://archive.org/details/night_of_the_living_dead&#10;https://www.youtube.com/watch?v=dQw4w9WgXcQ"></textarea>
+
+    <div style="margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:10px">
+      <h4 style="margin:0 0 8px">Commercial breaks (optional)</h4>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:600">
+        <input id="cfgBrkFileOn" type="checkbox">
+        Random ads pulled from a commercials pool file <code>(commercials.json)</code>
+      </label>
+      <div id="cfgBrkFileRow" style="display:none;margin:8px 0 4px">
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <div style="flex:2;min-width:170px">
+            <label>Pool file (next to this HTML)</label>
+            <input id="cfgBrkFile" value="commercials.json" spellcheck="false">
+          </div>
+          <div style="width:90px">
+            <label>Min ads</label>
+            <input id="cfgBrkCountMin" type="number" min="1" value="1">
+          </div>
+          <div style="width:90px">
+            <label>Max ads</label>
+            <input id="cfgBrkCountMax" type="number" min="1" value="2">
+          </div>
+        </div>
+        <p style="color:var(--muted);font-size:12px;margin:6px 0 0">
+          Keep the pool file a list of ad videos like
+          <code>{ "commercials": [ { "id": "some_ad_id" }, … ] }</code> — lengths resolve
+          automatically for archive.org ads (YouTube ads need seconds in the file).
+        </p>
+        <details style="margin-top:10px">
+          <summary style="cursor:pointer;font-weight:600">✨ Generate / refresh commercials.json</summary>
+          <label>Ad videos — one per line. archive.org: just the URL or ID (length
+            auto-resolves). YouTube: paste the URL, then add its length in seconds
+            after a space (YouTube won't tell a static site the length).</label>
+          <textarea id="cfgPoolIn" rows="4" spellcheck="false"
+            placeholder="https://archive.org/details/qr_20240128&#10;https://www.youtube.com/watch?v=aBcDeFgHiJk 31&#10;folgers_1 30"></textarea>
+          <div style="margin-top:6px">
+            <button id="cfgPoolBuild">Build pool file</button>
+          </div>
+          <div id="cfgPoolIssues" style="display:none;color:var(--accent);font-size:13px;margin-top:6px"></div>
+          <label id="cfgPoolOutLbl" style="display:none;margin-top:6px">Copy this into commercials.json next to the site</label>
+          <textarea id="cfgPoolOut" rows="6" spellcheck="false" style="display:none;width:100%;font-family:Consolas,monospace;font-size:12px"></textarea>
+          <button id="cfgPoolCopy" style="display:none">⧉ Copy</button>
+          <span id="cfgPoolMsg" style="color:var(--accent);font-size:12px;margin-left:8px"></span>
+        </details>
+      </div>
+      <label id="cfgBrkFixLbl">Break video (URL / identifier)</label>
+      <input id="cfgBrkId" placeholder="https://archive.org/details/folgers_1">
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:110px">
+          <label>Length (seconds — archive.com auto-verifies; YouTube auto-detects when the site loads)</label>
+          <input id="cfgBrkSec" type="number" min="1" value="30">
+        </div>
+        <div style="flex:2;min-width:180px">
+          <label>Run inside which program? (part of title/ID — or * for every program)</label>
+          <input id="cfgBrkAfter" placeholder="*">
+        </div>
+      </div>
+    </div>
     <div>
       <button id="cfgBuild">Build JSON</button>
     </div>
