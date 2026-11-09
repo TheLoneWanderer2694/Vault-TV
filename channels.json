@@ -6,7 +6,7 @@
       "description": "Classic video game reviews, specials, and TechTV highlights.",
       "color": "#38bdf8",
       "mode": "loop",
-      "start": "07:00",
+      "start": "12:00am",
       "items": [
         {
           "id": "X-Play.2011.04.19"
@@ -16,7 +16,6 @@
         },
         {
           "id": "X-Play.Fall.Out.3.Special",
-          "title": "X-Play Fallout 3 Special"
         },
         {
           "id": "X-Play.2008.10.27"
@@ -28,7 +27,7 @@
       "description": "Retro animated series, classic shorts, and nostalgia.",
       "color": "#f59e0b",
       "mode": "loop",
-      "start": "07:00",
+      "start": "12:00am",
       "items": [
         {
           "id": "yt:v9EdW9ADEZQ",
@@ -46,23 +45,6 @@
         }
       ]
     },
-    {
-      "name": "Retro Sci-Fi & Horror",
-      "description": "Vintage sci-fi movies, B-horror classics, and cult cinema.",
-      "color": "#10b981",
-      "mode": "loop",
-      "start": "00:00",
-      "items": [
-        {
-          "id": "night_of_the_living_dead",
-          "seconds": 5760,
-          "title": "Night of the Living Dead (1968)"
-        },
-        {
-          "id": "house_on_haunted_hill_ipod",
-          "seconds": 4500,
-          "title": "House on Haunted Hill"
-        }
       ]
     }
   ]
