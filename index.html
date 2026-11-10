@@ -241,7 +241,10 @@
         <hr class="border-zinc-800 my-4">
 
         <div>
-          <h4 class="text-sm font-bold text-zinc-300 mb-2">Manage Existing Channels</h4>
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="text-sm font-bold text-zinc-300">Manage Existing Channels</h4>
+            <button onclick="resetChannelsToDefault()" class="text-[11px] text-zinc-400 hover:text-red-400 underline">Reset / Clear Saved</button>
+          </div>
           <div id="manageChannelsList" class="space-y-2 max-h-40 overflow-y-auto pr-1"></div>
         </div>
       </div>
@@ -461,11 +464,21 @@
       return `YouTube Video (${vId})`;
     }
 
-    window.onload = function() {
-      loadChannels();
-      setInterval(updateClock, 1000);
-      
-      const savedRepo = localStorage.getItem("archive_tv_gh_repo");
+function updateClock() {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString();
+  const sideClock = $("currentTimeDisplay");
+  const prevueClock = $("prevueClock");
+  if (sideClock) sideClock.innerText = timeStr;
+  if (prevueClock) prevueClock.innerText = timeStr;
+}
+
+window.onload = function() {
+  loadChannels();
+  setInterval(updateClock, 1000);
+  updateClock();
+  
+  const savedRepo = localStorage.getItem("archive_tv_gh_repo");
       const savedToken = localStorage.getItem("archive_tv_gh_token");
       if (savedRepo && $("ghRepo")) $("ghRepo").value = savedRepo;
       if (savedToken && $("ghToken")) $("ghToken").value = savedToken;
@@ -599,6 +612,32 @@
     }
 
     async function loadChannels() {
+      // Check if user explicitly deleted/cleared all channels
+      const isCleared = localStorage.getItem("archive_tv_channels_cleared");
+      if (isCleared === "true") {
+        state.channels = [];
+        renderSideChannelList();
+        showNoChannelsState();
+        return;
+      }
+
+      // Prioritize local user changes so deleted/edited channels persist across refreshes
+      const saved = localStorage.getItem("archive_tv_channels");
+      if (saved !== null) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            state.channels = parsed;
+            renderSideChannelList();
+            if (state.channels.length === 0) {
+              showNoChannelsState();
+            }
+            return;
+          }
+        } catch(e) {}
+      }
+
+      // If no local storage exists at all, fetch initial channels.json remote preset
       try {
         const res = await fetch("channels.json?t=" + Date.now());
         if (res.ok) {
@@ -612,62 +651,30 @@
         }
       } catch(e) {}
 
-      const saved = localStorage.getItem("archive_tv_channels");
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          state.channels = Array.isArray(parsed) ? parsed : DEFAULT_CHANNELS;
-        } catch(e) {
-          state.channels = DEFAULT_CHANNELS;
-        }
-      } else {
-        state.channels = DEFAULT_CHANNELS;
-      }
+      state.channels = DEFAULT_CHANNELS;
+      localStorage.setItem("archive_tv_channels", JSON.stringify(state.channels));
       renderSideChannelList();
     }
 
     function saveChannelsStorage() {
-      localStorage.setItem("archive_tv_channels", JSON.stringify(state.channels));
+      if (state.channels.length === 0) {
+        localStorage.setItem("archive_tv_channels", JSON.stringify([]));
+        localStorage.setItem("archive_tv_channels_cleared", "true");
+      } else {
+        localStorage.removeItem("archive_tv_channels_cleared");
+        localStorage.setItem("archive_tv_channels", JSON.stringify(state.channels));
+      }
       renderSideChannelList();
       renderManageChannelsList();
     }
 
-    function updateClock() {
-      const now = new Date();
-      const timeStr = now.toTimeString().split(' ')[0];
-      const clockEl = $("currentTimeDisplay");
-      if (clockEl) clockEl.innerText = timeStr;
-
-      const prevueClock = $("prevueClock");
-      if (prevueClock) {
-        prevueClock.innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      }
-    }
-
-    window.toggleTVPower = function() {
-      state.isPoweredOn = !state.isPoweredOn;
-      const splash = $("splashScreen");
-      const powerBtn = $("powerBtn");
-      
-      if (state.channels.length === 0) {
-        state.isPoweredOn = false;
-        showNoChannelsState();
-        return;
-      }
-
-      if (state.isPoweredOn) {
-        splash.classList.add("hidden");
-        powerBtn.classList.remove("bg-red-600");
-        powerBtn.classList.add("bg-emerald-600");
-        tuneChannel(state.currentChannelIndex || 0);
-      } else {
-        splash.classList.remove("hidden");
-        powerBtn.classList.remove("bg-emerald-600");
-        powerBtn.classList.add("bg-red-600");
-        const vid = $("tvVideo");
-        const iframe = $("tvIframe");
-        if (vid) vid.pause(), vid.classList.add("hidden");
-        if (iframe) iframe.classList.add("hidden");
+    window.resetChannelsToDefault = function() {
+      if (confirm("Are you sure you want to reset to the default channel lineup?")) {
+        localStorage.removeItem("archive_tv_channels");
+        localStorage.removeItem("archive_tv_channels_cleared");
+        state.channels = [...DEFAULT_CHANNELS];
+        saveChannelsStorage();
+        tuneChannel(0);
       }
     };
 
@@ -698,7 +705,7 @@
     }
 
     window.tuneChannel = async function(chIdx, itemIdx = 0) {
-      if (state.channels.length === 0) {
+      if (!state.channels || state.channels.length === 0) {
         showNoChannelsState();
         return;
       }
