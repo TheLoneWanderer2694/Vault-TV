@@ -44,6 +44,10 @@
       </div>
     </div>
     <div class="flex items-center space-x-2">
+      <button onclick="toggleCableGuideModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-1.5 rounded text-sm transition flex items-center space-x-1">
+        <span>📋</span>
+        <span>Cable Guide</span>
+      </button>
       <button onclick="openChannelBuilder()" class="bg-amber-600 hover:bg-amber-500 text-black font-bold px-3 py-1.5 rounded text-sm transition">＋ New Channel</button>
       <button onclick="openJsonManager()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded text-sm transition">Sync GitHub / JSON</button>
       <button onclick="toggleTheaterMode()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded text-sm transition hidden sm:block">Theater Mode</button>
@@ -106,6 +110,10 @@
             <button onclick="toggleTVPower()" id="powerBtn" class="bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded font-bold text-xs uppercase transition shadow">Power</button>
             <button onclick="zapChannel(-1)" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-2 rounded text-xs transition">◀ CH Down</button>
             <button onclick="zapChannel(1)" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-2 rounded text-xs transition">CH Up ▶</button>
+            <button onclick="toggleCableGuideModal()" class="bg-indigo-900/60 hover:bg-indigo-800 text-indigo-200 border border-indigo-700/60 px-3 py-2 rounded text-xs transition flex items-center space-x-1 font-bold">
+              <span>📋</span>
+              <span>GUIDE</span>
+            </button>
           </div>
 
           <div class="flex items-center space-x-3">
@@ -124,16 +132,59 @@
     </div>
 
     <!-- Right Sidebar: Channel Guide -->
-    <div class="w-full lg:w-80 bg-zinc-900 border-t lg:border-t-0 lg:border-l border-zinc-800 flex flex-col h-72 lg:h-auto">
-      <div class="p-3 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between">
-        <span class="text-xs font-bold uppercase tracking-wider text-zinc-400">Broadcast Channel Guide</span>
-        <span id="currentTimeDisplay" class="text-xs font-mono text-amber-400">00:00:00</span>
-      </div>
-      <div id="sideChannelList" class="flex-1 overflow-y-auto divide-y divide-zinc-800/60 p-2 space-y-1">
-        <!-- Rendered dynamically -->
-      </div>
+  <div class="w-full lg:w-80 bg-zinc-900 border-t lg:border-t-0 lg:border-l border-zinc-800 flex flex-col h-72 lg:h-auto">
+    <div class="p-3 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between">
+      <span class="text-xs font-bold uppercase tracking-wider text-amber-400 vt323 text-base">Channel Selector</span>
+      <span id="currentTimeDisplay" class="text-xs font-mono text-amber-400">00:00:00</span>
     </div>
+    <div id="sideChannelList" class="flex-1 overflow-y-auto divide-y divide-zinc-800/60 p-2 space-y-1">
+      <!-- Rendered dynamically -->
+    </div>
+  </div>
 
+  </div>
+
+  <!-- Retro Cable Channel Guide Modal (Prevue / TV Guide Style) -->
+  <div id="prevueGuideModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex flex-col p-2 sm:p-6 overflow-hidden">
+    <div class="bg-blue-950 border-4 border-blue-600 rounded-xl flex-1 flex flex-col shadow-2xl overflow-hidden font-mono">
+      
+      <!-- Top Cable Guide Header Bar -->
+      <div class="bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-950 p-3 border-b-2 border-amber-400 flex items-center justify-between text-amber-400">
+        <div class="flex items-center space-x-3">
+          <span class="text-3xl">📺</span>
+          <div>
+            <h2 class="text-2xl font-bold tracking-widest vt323 text-amber-300">PREVUE CABLE TV GUIDE</h2>
+            <p class="text-xs text-blue-200">Interactive Lineup & Synchronized Broadcast Schedule</p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-4">
+          <div class="text-right hidden sm:block">
+            <div id="prevueClock" class="text-xl font-bold vt323 text-yellow-300">12:00:00 PM</div>
+            <div class="text-xs text-blue-300 uppercase">Interactive Cable</div>
+          </div>
+          <button onclick="toggleCableGuideModal()" class="bg-red-600 hover:bg-red-500 text-white font-bold px-3 py-1.5 rounded border border-red-400 text-sm">CLOSE GUIDE ✕</button>
+        </div>
+      </div>
+
+      <!-- Time Header Row -->
+      <div id="prevueTimeHeader" class="bg-blue-900 text-yellow-300 font-bold text-xs uppercase px-4 py-2 border-b border-blue-700 grid grid-cols-12 gap-2 text-center shadow-inner">
+        <div class="col-span-3 sm:col-span-2 text-left text-blue-200 font-mono">CH / STATION</div>
+        <div id="timeCol1" class="col-span-9 sm:col-span-5 bg-blue-950/60 rounded py-0.5 border border-blue-700/50">NOW PLAYING</div>
+        <div id="timeCol2" class="hidden sm:block sm:col-span-5 bg-blue-950/60 rounded py-0.5 border border-blue-700/50">UP NEXT</div>
+      </div>
+
+      <!-- Scrollable Cable Grid Content -->
+      <div id="prevueGridContent" class="flex-1 overflow-y-auto divide-y divide-blue-800/80 bg-blue-950 p-2 space-y-2">
+        <!-- Dynamic Cable Rows Rendered Here -->
+      </div>
+
+      <!-- Footer Ticker -->
+      <div class="bg-blue-900 border-t-2 border-amber-400 p-2 flex items-center space-x-3 text-amber-300 text-xs overflow-hidden">
+        <span class="bg-amber-500 text-black font-bold px-2 py-0.5 rounded text-[10px] uppercase">TV GUIDE</span>
+        <marquee class="font-mono text-sm tracking-wide text-yellow-200">Welcome to Archive Cable TV • Click any channel row to tune in immediately • Synchronized live broadcast grid</marquee>
+      </div>
+
+    </div>
   </div>
 
   <!-- Channel Builder Modal -->
@@ -149,8 +200,8 @@
         <input type="hidden" id="editingChIdx" value="-1">
 
         <div>
-          <label class="block text-xs text-zinc-400 mb-1">Video Items (Archive.org Item ID, YouTube URL, YouTube ID, or @Username / Channel Link)</label>
-          <textarea id="newChIds" rows="5" placeholder="@G4TV&#10;https://www.youtube.com/@IGN&#10;yt:v9EdW9ADEZQ&#10;X-Play.2011.04.19" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-500"></textarea>
+          <label class="block text-xs text-zinc-400 mb-1">Video Items & Duration (HH:MM:SS, MM:SS, or 1h30m)</label>
+          <textarea id="newChIds" rows="5" placeholder="yt:v9EdW9ADEZQ, 1:45:30&#10;https://www.youtube.com/watch?v=NAWOdnuDBBU | 2h 15m&#10;@G4TV&#10;X-Play.2011.04.19, 01:30:00" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-500"></textarea>
         </div>
 
         <div>
@@ -171,14 +222,14 @@
             </select>
           </div>
           <div>
-            <label class="block text-xs text-zinc-400 mb-1">Start Time (HH:MM)</label>
-            <input type="time" id="newChStart" value="07:00" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+            <label class="block text-xs text-zinc-400 mb-1">Start Time (HH:MM:SS)</label>
+            <input type="time" step="1" id="newChStart" value="07:00:00" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
           </div>
         </div>
 
         <div>
-          <label class="block text-xs text-zinc-400 mb-1">Video Items (Archive.org Item ID, YouTube URL, or YouTube ID)</label>
-          <textarea id="newChIds" rows="5" placeholder="X-Play.2011.04.19&#10;yt:v9EdW9ADEZQ&#10;https://www.youtube.com/watch?v=v9EdW9ADEZQ&#10;https://archive.org/details/my-custom-video" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-500"></textarea>
+          <label class="block text-xs text-zinc-400 mb-1">Video Items & Duration (MM:SS or Seconds)</label>
+          <textarea id="newChIds" rows="5" placeholder="yt:v9EdW9ADEZQ, 45:30&#10;https://www.youtube.com/watch?v=NAWOdnuDBBU | 15:05&#10;@G4TV&#10;X-Play.2011.04.19, 21:45" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-500"></textarea>
         </div>
 
         <div class="pt-2 flex justify-end space-x-3">
@@ -353,6 +404,116 @@
       }, { once: true });
     };
 
+    window.toggleCableGuideModal = function() {
+      const modal = $("prevueGuideModal");
+      if (!modal) return;
+      const isHidden = modal.classList.contains("hidden");
+      if (isHidden) {
+        renderCableGuideGrid();
+        modal.classList.remove("hidden");
+      } else {
+        modal.classList.add("hidden");
+      }
+    };
+
+    function renderCableGuideGrid() {
+      const grid = $("prevueGridContent");
+      if (!grid) return;
+      grid.innerHTML = "";
+
+      if (!state.channels || state.channels.length === 0) {
+        grid.innerHTML = `<div class="p-8 text-center text-blue-300 font-mono">No channels registered in the cable guide lineup.</div>`;
+        return;
+      }
+
+      const now = new Date();
+      const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+
+      state.channels.forEach((ch, idx) => {
+        const isActive = state.isPoweredOn && state.currentChannelIndex === idx;
+
+        // Calculate schedule items & exact start timestamps
+        let startSeconds = 0;
+        if (ch.start) {
+          const sParts = ch.start.split(':').map(p => parseInt(p, 10) || 0);
+          startSeconds = sParts[0] * 3600 + (sParts[1] || 0) * 60 + (sParts[2] || 0);
+        }
+
+        const itemDurations = (ch.items || []).map(item => item.durationSec || parseDurationInSeconds(item.duration));
+        const totalChannelDuration = itemDurations.reduce((acc, curr) => acc + curr, 0) || 1800;
+        
+        let relativeSeconds = (currentSeconds - startSeconds) % totalChannelDuration;
+        if (relativeSeconds < 0) relativeSeconds += totalChannelDuration;
+
+        let nowIdx = 0;
+        let elapsedInItem = relativeSeconds;
+        let nowItemStartSeconds = currentSeconds - elapsedInItem;
+
+        for (let i = 0; i < itemDurations.length; i++) {
+          if (elapsedInItem < itemDurations[i]) {
+            nowIdx = i;
+            break;
+          }
+          elapsedInItem -= itemDurations[i];
+        }
+
+        const nextIdx = (nowIdx + 1) % (ch.items.length || 1);
+        const nowItem = ch.items[nowIdx] || { title: "Scheduled Program" };
+        const nextItem = ch.items[nextIdx] || { title: "Upcoming Special" };
+
+        const nowDuration = itemDurations[nowIdx] || 1800;
+        const nextItemStartSeconds = nowItemStartSeconds + nowDuration;
+
+        function formatTimeFromSec(sec) {
+          let totalSec = (sec + 86400) % 86400;
+          let hrs = Math.floor(totalSec / 3600);
+          let mins = Math.floor((totalSec % 3600) / 60);
+          const ampm = hrs >= 12 ? 'PM' : 'AM';
+          hrs = hrs % 12 || 12;
+          return `${hrs}:${mins.toString().padStart(2, '0')} ${ampm}`;
+        }
+
+        const nowTimeStr = formatTimeFromSec(nowItemStartSeconds);
+        const nextTimeStr = formatTimeFromSec(nextItemStartSeconds);
+
+        const row = document.createElement("div");
+        row.className = `grid grid-cols-12 gap-2 p-2.5 rounded-lg border transition cursor-pointer items-center ${
+          isActive 
+            ? "bg-amber-500/20 border-amber-400 text-amber-200 shadow-lg" 
+            : "bg-blue-900/40 border-blue-800 hover:bg-blue-800/60 text-blue-100"
+        }`;
+        row.onclick = () => {
+          tuneChannel(idx, nowIdx);
+          toggleCableGuideModal();
+        };
+
+        row.innerHTML = `
+          <div class="col-span-3 sm:col-span-2 flex items-center space-x-2 overflow-hidden">
+            <span class="font-bold text-sm px-2 py-1 rounded text-black shrink-0" style="background-color: ${ch.color || '#38bdf8'}; font-family: 'VT323', monospace;">CH ${(idx + 1).toString().padStart(2, '0')}</span>
+            <div class="truncate font-bold text-xs sm:text-sm text-amber-300">${ch.name}</div>
+          </div>
+          <div class="col-span-9 sm:col-span-5 bg-black/40 p-2 rounded border border-blue-700/60 flex items-center justify-between overflow-hidden">
+            <div class="truncate">
+              <div class="flex items-center space-x-2 text-[11px] text-amber-400 font-bold">
+                <span class="bg-blue-950 px-1.5 py-0.5 rounded border border-blue-700/50">${nowTimeStr}</span>
+                <span class="truncate">${nowItem.title}</span>
+              </div>
+              <div class="text-[10px] text-blue-300 truncate mt-0.5">${ch.description || "On Air Now"}</div>
+            </div>
+            ${isActive ? '<span class="text-[10px] bg-red-600 text-white font-bold px-1.5 py-0.5 rounded animate-pulse shrink-0 ml-2">LIVE</span>' : ''}
+          </div>
+          <div class="hidden sm:block sm:col-span-5 bg-black/20 p-2 rounded border border-blue-800/40 overflow-hidden">
+            <div class="flex items-center space-x-2 text-[11px] text-blue-200 font-bold">
+              <span class="bg-blue-950 px-1.5 py-0.5 rounded border border-blue-800/60 text-blue-300">${nextTimeStr}</span>
+              <span class="truncate">${nextItem.title}</span>
+            </div>
+            <div class="text-[10px] text-blue-400 truncate mt-0.5">Following Program</div>
+          </div>
+        `;
+        grid.appendChild(row);
+      });
+    }
+
     async function loadChannels() {
       try {
         const res = await fetch("channels.json?t=" + Date.now());
@@ -392,6 +553,11 @@
       const timeStr = now.toTimeString().split(' ')[0];
       const clockEl = $("currentTimeDisplay");
       if (clockEl) clockEl.innerText = timeStr;
+
+      const prevueClock = $("prevueClock");
+      if (prevueClock) {
+        prevueClock.innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      }
     }
 
     window.toggleTVPower = function() {
@@ -627,61 +793,67 @@
     }
 
     function renderSideChannelList() {
-      const list = $("sideChannelList");
-      if (!list) return;
-      list.innerHTML = "";
+      const sideList = $("sideChannelList");
+      if (!sideList) return;
+      sideList.innerHTML = "";
 
-      if (state.channels.length === 0) {
-        list.innerHTML = `
-          <div class="p-4 text-center text-zinc-500 text-xs">
-            No channels available.<br>Click <button onclick="openChannelBuilder()" class="text-amber-400 underline font-bold mt-1 inline-block">＋ New Channel</button> to add one.
-          </div>
-        `;
+      if (!state.channels || state.channels.length === 0) {
+        sideList.innerHTML = `<div class="p-4 text-center text-xs text-zinc-500">No channels added yet.<br>Click <strong>＋ New Channel</strong> above to create one.</div>`;
         return;
       }
 
       state.channels.forEach((ch, idx) => {
-        const isCurrent = idx === state.currentChannelIndex && state.isPoweredOn;
-        const item = document.createElement("div");
-        item.className = `p-3 rounded cursor-pointer transition flex items-center justify-between ${isCurrent ? 'bg-amber-500/10 border border-amber-500/40 text-amber-300' : 'hover:bg-zinc-800 text-zinc-300'}`;
-        item.onclick = () => tuneChannel(idx, 0);
+        const isActive = state.isPoweredOn && state.currentChannelIndex === idx;
+        const div = document.createElement("div");
+        div.className = `p-3 rounded-lg border cursor-pointer transition flex items-center justify-between ${
+          isActive 
+            ? "bg-amber-500/10 border-amber-500/50 text-amber-300" 
+            : "bg-zinc-950/60 border-zinc-800/80 hover:bg-zinc-800/60 text-zinc-300"
+        }`;
+        div.onclick = () => tuneChannel(idx, 0);
 
-        item.innerHTML = `
-          <div class="flex items-center space-x-3">
-            <span class="font-mono text-xs font-bold px-2 py-1 rounded bg-zinc-800 text-amber-400">CH ${(idx+1).toString().padStart(2, '0')}</span>
-            <div>
-              <div class="text-sm font-bold">${ch.name}</div>
-              <div class="text-xs text-zinc-400 truncate max-w-[160px]">${ch.description || ''}</div>
+        div.innerHTML = `
+          <div class="flex items-center space-x-3 overflow-hidden">
+            <span class="font-mono font-bold text-xs px-2 py-1 bg-zinc-900 border border-zinc-700 rounded text-amber-400">CH ${(idx + 1).toString().padStart(2, '0')}</span>
+            <div class="truncate">
+              <div class="font-bold text-sm truncate">${ch.name}</div>
+              <div class="text-xs text-zinc-400 truncate">${ch.description || (ch.items ? ch.items.length + " items" : "Custom Channel")}</div>
             </div>
           </div>
-          <button onclick="event.stopPropagation(); removeChannel(${idx})" class="text-zinc-500 hover:text-red-400 p-2 text-xs transition" title="Delete Channel">🗑️</button>
+          <div class="flex items-center space-x-2">
+            <button onclick="event.stopPropagation(); editChannel(${idx})" class="text-xs text-zinc-400 hover:text-white px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700">Edit</button>
+            <button onclick="event.stopPropagation(); removeChannel(${idx})" class="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded bg-zinc-900 border border-red-900/50 hover:bg-red-950">🗑️</button>
+          </div>
         `;
-        list.appendChild(item);
+        sideList.appendChild(div);
       });
     }
 
-    window.removeChannel = function(idx) {
-      if (idx === undefined || idx < 0 || idx >= state.channels.length) return;
+    function renderManageChannelsList() {
+      const container = $("manageChannelsList");
+      if (!container) return;
+      container.innerHTML = "";
 
-      state.channels.splice(idx, 1);
-      
-      if (state.channels.length === 0) {
-        state.currentChannelIndex = 0;
-        state.isPoweredOn = false;
-        showNoChannelsState();
-      } else {
-        if (state.currentChannelIndex >= state.channels.length) {
-          state.currentChannelIndex = Math.max(0, state.channels.length - 1);
-        }
-        if (state.isPoweredOn) {
-          tuneChannel(state.currentChannelIndex, 0);
-        }
+      if (!state.channels || state.channels.length === 0) {
+        container.innerHTML = `<div class="text-xs text-zinc-500 py-2">No channels stored.</div>`;
+        return;
       }
 
-      saveChannelsStorage();
-      renderSideChannelList();
-      renderManageChannelsList();
-    };
+      state.channels.forEach((ch, idx) => {
+        const div = document.createElement("div");
+        div.className = "flex items-center justify-between p-2 bg-zinc-950 border border-zinc-800 rounded text-xs";
+        div.innerHTML = `
+          <div class="truncate mr-2">
+            <span class="font-bold text-amber-400">CH ${(idx + 1).toString().padStart(2, '0')}</span> — ${ch.name}
+          </div>
+          <div class="flex items-center space-x-1 shrink-0">
+            <button onclick="editChannel(${idx})" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-2 py-1 rounded">Edit</button>
+            <button onclick="removeChannel(${idx})" class="bg-red-900/40 hover:bg-red-900 text-red-300 px-2 py-1 rounded">Delete</button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
 
     window.openChannelBuilder = function() {
       $("editingChIdx").value = "-1";
@@ -692,7 +864,7 @@
       $("newChIds").value = "";
       $("newChColor").value = "#38bdf8";
       $("newChMode").value = "loop";
-      $("newChStart").value = "07:00";
+      $("newChStart").value = "07:00:00";
       $("builderModal").classList.remove("hidden");
       renderManageChannelsList();
     };
@@ -700,6 +872,134 @@
     window.closeChannelBuilder = function() {
       $("builderModal").classList.add("hidden");
     };
+
+    window.removeChannel = function(idx) {
+      if (idx < 0 || idx >= state.channels.length) return;
+      state.channels.splice(idx, 1);
+      saveChannelsStorage();
+
+      if (state.channels.length === 0) {
+        showNoChannelsState();
+      } else if (state.currentChannelIndex >= state.channels.length) {
+        tuneChannel(0, 0);
+      } else if (state.currentChannelIndex === idx) {
+        tuneChannel(state.currentChannelIndex, 0);
+      } else {
+        renderSideChannelList();
+      }
+    };
+
+    function parseDurationInSeconds(valStr) {
+      if (!valStr) return 1800; // 30 mins default (1800 sec)
+      const str = valStr.toString().trim().toLowerCase();
+      
+      // Support 1h30m / 2h / 45m / 30s text strings
+      if (str.includes("h") || str.includes("m") || str.includes("s")) {
+        let totalSec = 0;
+        const hMatch = str.match(/(\d+(?:\.\d+)?)\s*h/);
+        const mMatch = str.match(/(\d+(?:\.\d+)?)\s*m/);
+        const sMatch = str.match(/(\d+(?:\.\d+)?)\s*s/);
+        if (hMatch) totalSec += parseFloat(hMatch[1]) * 3600;
+        if (mMatch) totalSec += parseFloat(mMatch[1]) * 60;
+        if (sMatch) totalSec += parseFloat(sMatch[1]);
+        if (totalSec > 0) return Math.round(totalSec);
+      }
+
+      // Check for HH:MM:SS or MM:SS format
+      if (str.includes(":")) {
+        const parts = str.split(":").map(p => parseFloat(p) || 0);
+        if (parts.length === 3) {
+          return Math.round(parts[0] * 3600 + parts[1] * 60 + parts[2]);
+        } else if (parts.length === 2) {
+          return Math.round(parts[0] * 60 + parts[1]);
+        }
+      }
+      
+      const num = parseFloat(str);
+      if (!isNaN(num) && num > 0) {
+        return num < 180 ? Math.round(num * 60) : Math.round(num);
+      }
+      return 1800;
+    }
+
+    function playCurrentItemWithTimeSync() {
+      const ch = state.channels[state.currentChannelIndex];
+      if (!ch || !ch.items || ch.items.length === 0) return;
+
+      const now = new Date();
+      const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+      
+      // Parse start time (HH:MM:SS) if configured
+      let startSeconds = 0;
+      if (ch.start) {
+        const sParts = ch.start.split(':').map(p => parseInt(p, 10) || 0);
+        startSeconds = sParts[0] * 3600 + (sParts[1] || 0) * 60 + (sParts[2] || 0);
+      }
+
+      const itemDurations = ch.items.map(item => item.durationSec || parseDurationInSeconds(item.duration));
+      const totalChannelDuration = itemDurations.reduce((acc, curr) => acc + curr, 0) || 1800;
+      
+      let relativeSeconds = (currentSeconds - startSeconds) % totalChannelDuration;
+      if (relativeSeconds < 0) relativeSeconds += totalChannelDuration;
+
+      let targetItemIdx = 0;
+      let elapsedInItem = relativeSeconds;
+      
+      for (let i = 0; i < itemDurations.length; i++) {
+        if (elapsedInItem < itemDurations[i]) {
+          targetItemIdx = i;
+          break;
+        }
+        elapsedInItem -= itemDurations[i];
+        if (i === itemDurations.length - 1) {
+          targetItemIdx = i;
+        }
+      }
+
+      state.currentItemIndex = targetItemIdx;
+      const offset = elapsedInItem;
+      const it = ch.items[targetItemIdx];
+
+      const vid = $("tvVideo");
+      const iframe = $("tvIframe");
+
+      if (isYT(it.id)) {
+        if (vid) vid.pause(), vid.classList.add("hidden");
+        if (iframe) {
+          iframe.classList.remove("hidden");
+          const ytCode = ytVid(it.id);
+          iframe.src = `https://www.youtube.com/embed/${ytCode}?autoplay=1&mute=0&start=${Math.floor(offset)}&enablejsapi=1&playsinline=1&rel=0`;
+        }
+      } else {
+        if (iframe) iframe.classList.add("hidden");
+        if (vid) {
+          vid.classList.remove("hidden");
+          vid.src = `https://archive.org/download/${encodeURIComponent(it.id)}/${encodeURIComponent(it.id)}.mp4`;
+          vid.currentTime = Math.floor(offset);
+          vid.volume = state.volume;
+          
+          if (!state.userInteracted) {
+            vid.muted = true;
+            const overlay = $("androidUnmuteOverlay");
+            if (overlay) overlay.classList.remove("hidden");
+          } else {
+            vid.muted = false;
+          }
+
+          vid.play().catch(() => {
+            vid.muted = true;
+            vid.play().catch(() => {
+              vid.classList.add("hidden");
+              if (iframe) {
+                iframe.classList.remove("hidden");
+                iframe.src = `${ARCHIVE_EMBED(it.id)}?autoplay=1&start=${Math.floor(offset)}`;
+              }
+            });
+          });
+        }
+      }
+      renderSideChannelList();
+    }
 
     window.editChannel = function(idx) {
       const ch = state.channels[idx];
@@ -712,10 +1012,19 @@
       $("newChDesc").value = ch.description || "";
       $("newChColor").value = ch.color || "#38bdf8";
       $("newChMode").value = ch.mode || "loop";
-      $("newChStart").value = ch.start || "07:00";
+      $("newChStart").value = ch.start || "07:00:00";
 
       if (ch.items && ch.items.length > 0) {
-        $("newChIds").value = ch.items.map(it => it.id).join('\n');
+        $("newChIds").value = ch.items.map(it => {
+          const sec = it.durationSec || parseDurationInSeconds(it.duration);
+          const hrs = Math.floor(sec / 3600);
+          const mins = Math.floor((sec % 3600) / 60);
+          const secs = (sec % 60).toString().padStart(2, '0');
+          if (hrs > 0) {
+            return `${it.id}, ${hrs}:${mins.toString().padStart(2, '0')}:${secs}`;
+          }
+          return `${it.id}, ${mins}:${secs}`;
+        }).join('\n');
       } else {
         $("newChIds").value = "";
       }
@@ -723,33 +1032,6 @@
       $("builderModal").classList.remove("hidden");
       renderManageChannelsList();
     };
-
-    function renderManageChannelsList() {
-      const list = $("manageChannelsList");
-      if (!list) return;
-      list.innerHTML = "";
-
-      if (state.channels.length === 0) {
-        list.innerHTML = `<div class="text-xs text-zinc-500 italic p-2">No channels configured.</div>`;
-        return;
-      }
-
-      state.channels.forEach((ch, idx) => {
-        const div = document.createElement("div");
-        div.className = "flex items-center justify-between bg-zinc-950 p-2 rounded border border-zinc-800/80 text-xs";
-        div.innerHTML = `
-          <div class="truncate max-w-[200px]">
-            <span class="font-bold text-amber-400 mr-1">CH ${(idx + 1).toString().padStart(2, '0')}</span>
-            <span class="text-zinc-200">${ch.name}</span>
-          </div>
-          <div class="flex items-center space-x-2">
-            <button onclick="editChannel(${idx})" class="text-amber-400 hover:text-amber-300 font-bold px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 transition">Edit</button>
-            <button onclick="removeChannel(${idx})" class="text-red-400 hover:text-red-300 font-bold px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 transition">Delete</button>
-          </div>
-        `;
-        list.appendChild(div);
-      });
-    }
 
     window.saveNewChannel = async function() {
       const editIdx = parseInt($("editingChIdx").value, 10);
@@ -764,23 +1046,36 @@
       let items = [];
 
       for (const line of rawLines) {
-        if (line.startsWith("@") || line.includes("youtube.com/@") || line.includes("youtube.com/user/")) {
-          const fetched = await fetchChannelVideosFromUser(line);
-          items.push(...fetched);
-        } else if (line.startsWith("yt:") || line.includes("youtube.com/watch")) {
-          let vidId = line;
-          if (line.includes("v=")) {
-            vidId = line.split("v=")[1].split("&")[0];
+        let entry = line;
+        let specifiedDurationSec = 1800; // 30 mins default
+
+        if (entry.includes(",")) {
+          const parts = entry.split(",");
+          entry = parts[0].trim();
+          specifiedDurationSec = parseDurationInSeconds(parts[1].trim());
+        } else if (entry.includes("|")) {
+          const parts = entry.split("|");
+          entry = parts[0].trim();
+          specifiedDurationSec = parseDurationInSeconds(parts[1].trim());
+        }
+
+        if (entry.startsWith("@") || entry.includes("youtube.com/@") || entry.includes("youtube.com/user/")) {
+          const fetched = await fetchChannelVideosFromUser(entry);
+          items.push(...fetched.map(it => ({ ...it, durationSec: specifiedDurationSec, duration: specifiedDurationSec / 60 })));
+        } else if (entry.startsWith("yt:") || entry.includes("youtube.com/watch")) {
+          let vidId = entry;
+          if (entry.includes("v=")) {
+            vidId = entry.split("v=")[1].split("&")[0];
           }
           if (!vidId.startsWith("yt:")) vidId = "yt:" + vidId;
-          items.push({ id: vidId, title: "YouTube Video", duration: 30 });
+          items.push({ id: vidId, title: "YouTube Video", durationSec: specifiedDurationSec, duration: specifiedDurationSec / 60 });
         } else {
-          items.push({ id: line, title: line, duration: 30 });
+          items.push({ id: entry, title: entry, durationSec: specifiedDurationSec, duration: specifiedDurationSec / 60 });
         }
       }
 
       if (items.length === 0) {
-        items.push({ id: "X-Play.2011.04.19", title: "Default Broadcast", duration: 30 });
+        items.push({ id: "X-Play.2011.04.19", title: "Default Broadcast", durationSec: 1800, duration: 30 });
       }
 
       const newCh = { name, description: desc, color, mode, start, items };
