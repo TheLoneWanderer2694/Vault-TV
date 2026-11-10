@@ -1204,7 +1204,7 @@ window.onload = function() {
           description: desc,
           color: color,
           mode: mode,
-          items: items.length > 0 ? items : [{ id: "yt:v9EdW9ADEZQ", title: "Fallback Stream", durationSec: 1800, duration: 30 }]
+          items: items
         };
 
         if (editIdx >= 0 && editIdx < state.channels.length) {
@@ -1216,7 +1216,9 @@ window.onload = function() {
         saveChannelsStorage();
         closeChannelBuilder();
 
-        if (!state.isPoweredOn) {
+        if (state.channels.length === 0) {
+          showNoChannelsState();
+        } else if (!state.isPoweredOn) {
           tuneChannel(editIdx >= 0 ? editIdx : state.channels.length - 1);
         } else {
           tuneChannel(state.currentChannelIndex);
