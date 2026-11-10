@@ -659,9 +659,11 @@ window.onload = function() {
     }
 
     async function loadChannels() {
-      // Check if user explicitly deleted/cleared all channels
+      // Check if user explicitly deleted/cleared all channels or saved empty array
       const isCleared = localStorage.getItem("archive_tv_channels_cleared");
-      if (isCleared === "true") {
+      const savedRaw = localStorage.getItem("archive_tv_channels");
+
+      if (isCleared === "true" || savedRaw === "[]") {
         state.channels = [];
         renderSideChannelList();
         showNoChannelsState();
@@ -669,10 +671,9 @@ window.onload = function() {
       }
 
       // Prioritize local user changes so deleted/edited channels persist across refreshes
-      const saved = localStorage.getItem("archive_tv_channels");
-      if (saved !== null) {
+      if (savedRaw !== null) {
         try {
-          const parsed = JSON.parse(saved);
+          const parsed = JSON.parse(savedRaw);
           if (Array.isArray(parsed)) {
             state.channels = parsed;
             renderSideChannelList();
@@ -705,8 +706,9 @@ window.onload = function() {
     }
 
     function saveChannelsStorage() {
-      if (state.channels.length === 0) {
-        localStorage.setItem("archive_tv_channels", JSON.stringify([]));
+      if (!state.channels || state.channels.length === 0) {
+        state.channels = [];
+        localStorage.setItem("archive_tv_channels", "[]");
         localStorage.setItem("archive_tv_channels_cleared", "true");
       } else {
         localStorage.removeItem("archive_tv_channels_cleared");
@@ -717,12 +719,10 @@ window.onload = function() {
     }
 
     window.resetChannelsToDefault = function() {
-      if (confirm("Are you sure you want to reset to the default channel lineup?")) {
-        localStorage.removeItem("archive_tv_channels");
-        localStorage.removeItem("archive_tv_channels_cleared");
-        state.channels = [...DEFAULT_CHANNELS];
+      if (confirm("Are you sure you want to completely clear all saved channels?")) {
+        state.channels = [];
         saveChannelsStorage();
-        tuneChannel(0);
+        showNoChannelsState();
       }
     };
 
