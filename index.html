@@ -169,8 +169,8 @@
       <!-- Time Header Row -->
       <div id="prevueTimeHeader" class="bg-blue-900 text-yellow-300 font-bold text-xs uppercase px-4 py-2 border-b border-blue-700 grid grid-cols-12 gap-2 text-center shadow-inner">
         <div class="col-span-3 sm:col-span-2 text-left text-blue-200 font-mono">CH / STATION</div>
-        <div id="timeCol1" class="col-span-9 sm:col-span-5 bg-blue-950/60 rounded py-0.5 border border-blue-700/50">NOW PLAYING</div>
-        <div id="timeCol2" class="hidden sm:block sm:col-span-5 bg-blue-950/60 rounded py-0.5 border border-blue-700/50">UP NEXT</div>
+        <div id="timeCol1" class="col-span-9 sm:col-span-4 bg-blue-950/60 rounded py-0.5 border border-blue-700/50">NOW PLAYING</div>
+        <div id="timeCol2" class="hidden sm:block sm:col-span-6 bg-blue-950/60 rounded py-0.5 border border-blue-700/50">UPCOMING LINEUP</div>
       </div>
 
       <!-- Scrollable Cable Grid Content -->
@@ -353,14 +353,21 @@
             const data = await res.json();
             
             if (data.items && data.items.length > 0) {
-              return data.items.map(item => {
+              const itemsWithDurations = [];
+              for (const item of data.items) {
                 const vidId = item.link.includes("v=") ? item.link.split("v=")[1].split("&")[0] : (item.guid ? item.guid.split(":").pop() : "");
-                return {
+                let durationSec = 1800;
+                if (vidId) {
+                  durationSec = await fetchYouTubeVideoDuration(vidId);
+                }
+                itemsWithDurations.push({
                   id: "yt:" + vidId,
                   title: item.title || "Playlist Video",
-                  duration: 30
-                };
-              }).filter(it => it.id !== "yt:");
+                  durationSec: durationSec,
+                  duration: durationSec / 60
+                });
+              }
+              return itemsWithDurations.filter(it => it.id !== "yt:");
             }
 
             if (data.contents) {
@@ -370,11 +377,18 @@
               
               const foundIds = [...new Set(matches.map(m => m[1]))];
               if (foundIds.length > 0) {
-                return foundIds.map((vId, idx) => ({
-                  id: "yt:" + vId,
-                  title: (titleMatches[idx + 1] ? titleMatches[idx + 1][1] : "Playlist Video"),
-                  duration: 30
-                }));
+                const results = [];
+                for (let idx = 0; idx < foundIds.length; idx++) {
+                  const vId = foundIds[idx];
+                  const durationSec = await fetchYouTubeVideoDuration(vId);
+                  results.push({
+                    id: "yt:" + vId,
+                    title: (titleMatches[idx + 1] ? titleMatches[idx + 1][1] : "Playlist Video"),
+                    durationSec: durationSec,
+                    duration: durationSec / 60
+                  });
+                }
+                return results;
               }
             }
           }
@@ -383,6 +397,45 @@
         }
       }
       return [];
+    }
+
+    async function fetchYouTubeVideoDuration(vId) {
+      const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${vId}&format=json`;
+      const proxies = [
+        `https://api.allorigins.win/get?url=${encodeURIComponent(oembedUrl)}`,
+        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(oembedUrl)}`
+      ];
+
+      for (const proxy of proxies) {
+        try {
+          const res = await fetch(proxy);
+          if (res.ok) {
+            const data = await res.json();
+            const contents = data.contents ? JSON.parse(data.contents) : data;
+            // oembed returns author/title; if author name resembles duration or we want estimation:
+            // Since oembed doesn't provide duration in seconds natively, we can fetch via invidious/ytdlp API proxy or default to standard length estimation or try fallback:
+          }
+        } catch (e) {}
+      }
+
+      // Try fetching duration via Invidious / Piped API public instances as a robust fallback
+      const invidiousInstances = [
+        `https://vid.puffyan.us/api/v1/videos/${vId}`,
+        `https://invidious.projectsegfau.lt/api/v1/videos/${vId}`
+      ];
+      for (const invUrl of invidiousInstances) {
+        try {
+          const res = await fetch(invUrl);
+          if (res.ok) {
+            const json = await res.json();
+            if (json && json.lengthSeconds) {
+              return parseInt(json.lengthSeconds, 10);
+            }
+          }
+        } catch (e) {}
+      }
+
+      return 1800; // default 30 mins fallback if API lookup fails
     }
 
     async function fetchChannelVideosFromUser(inputStr) {
@@ -558,12 +611,8 @@ window.onload = function() {
           elapsedInItem -= itemDurations[i];
         }
 
-        const nextIdx = (nowIdx + 1) % (ch.items.length || 1);
         const nowItem = ch.items[nowIdx] || { title: "Scheduled Program" };
-        const nextItem = ch.items[nextIdx] || { title: "Upcoming Special" };
-
         const nowDuration = itemDurations[nowIdx] || 1800;
-        const nextItemStartSeconds = nowItemStartSeconds + nowDuration;
 
         function formatTimeFromUnix(unixSec) {
           const date = new Date(unixSec * 1000);
@@ -571,7 +620,30 @@ window.onload = function() {
         }
 
         const nowTimeStr = formatTimeFromUnix(nowItemStartSeconds);
-        const nextTimeStr = formatTimeFromUnix(nextItemStartSeconds);
+
+        // Build array of all upcoming items in sequence with their start times
+        let upcomingHTML = "";
+        let cumulativeSec = nowItemStartSeconds + nowDuration;
+        const totalItems = ch.items.length || 1;
+
+        for (let step = 1; step < totalItems; step++) {
+          const upIdx = (nowIdx + step) % totalItems;
+          const upItem = ch.items[upIdx] || { title: "Upcoming Program" };
+          const upDur = itemDurations[upIdx] || 1800;
+          const upTimeStr = formatTimeFromUnix(cumulativeSec);
+          cumulativeSec += upDur;
+
+          upcomingHTML += `
+            <div class="flex items-center space-x-2 text-[11px] text-blue-200 font-bold border-b border-blue-800/40 pb-1 last:border-b-0 last:pb-0">
+              <span class="bg-blue-950 px-1.5 py-0.5 rounded border border-blue-800/60 text-yellow-300 text-[10px] shrink-0 font-mono">${upTimeStr}</span>
+              <span class="truncate" title="${upItem.title}">${upItem.title}</span>
+            </div>
+          `;
+        }
+
+        if (!upcomingHTML) {
+          upcomingHTML = `<div class="text-[10px] text-blue-400 italic">Continuous Loop Broadcast</div>`;
+        }
 
         const row = document.createElement("div");
         row.className = `grid grid-cols-12 gap-2 p-2.5 rounded-lg border transition cursor-pointer items-center ${
@@ -589,22 +661,18 @@ window.onload = function() {
             <span class="font-bold text-sm px-2 py-1 rounded text-black shrink-0" style="background-color: ${ch.color || '#38bdf8'}; font-family: 'VT323', monospace;">CH ${(idx + 1).toString().padStart(2, '0')}</span>
             <div class="truncate font-bold text-xs sm:text-sm text-amber-300">${ch.name}</div>
           </div>
-          <div class="col-span-9 sm:col-span-5 bg-black/40 p-2 rounded border border-blue-700/60 flex items-center justify-between overflow-hidden">
+          <div class="col-span-9 sm:col-span-4 bg-black/40 p-2 rounded border border-blue-700/60 flex items-center justify-between overflow-hidden">
             <div class="truncate">
               <div class="flex items-center space-x-2 text-[11px] text-amber-400 font-bold">
-                <span class="bg-blue-950 px-1.5 py-0.5 rounded border border-blue-700/50">${nowTimeStr}</span>
+                <span class="bg-blue-950 px-1.5 py-0.5 rounded border border-blue-700/50 text-[10px] shrink-0 font-mono">${nowTimeStr}</span>
                 <span class="truncate">${nowItem.title}</span>
               </div>
               <div class="text-[10px] text-blue-300 truncate mt-0.5">${ch.description || "Continuous Broadcast Loop"}</div>
             </div>
             ${isActive ? '<span class="text-[10px] bg-red-600 text-white font-bold px-1.5 py-0.5 rounded animate-pulse shrink-0 ml-2">LIVE</span>' : ''}
           </div>
-          <div class="hidden sm:block sm:col-span-5 bg-black/20 p-2 rounded border border-blue-800/40 overflow-hidden">
-            <div class="flex items-center space-x-2 text-[11px] text-blue-200 font-bold">
-              <span class="bg-blue-950 px-1.5 py-0.5 rounded border border-blue-800/60 text-blue-300">${nextTimeStr}</span>
-              <span class="truncate">${nextItem.title}</span>
-            </div>
-            <div class="text-[10px] text-blue-400 truncate mt-0.5">Following Program</div>
+          <div class="hidden sm:block sm:col-span-6 bg-black/20 p-2 rounded border border-blue-800/40 overflow-hidden space-y-1 max-h-24 overflow-y-auto">
+            ${upcomingHTML}
           </div>
         `;
         grid.appendChild(row);
