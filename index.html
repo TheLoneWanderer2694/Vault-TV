@@ -65,8 +65,16 @@
           <!-- Scanline Overlay -->
           <div id="crtOverlay" class="absolute inset-0 crt z-20 pointer-events-none"></div>
 
+          <!-- Touch Unmute Banner for Android/Mobile Webkit -->
+          <div id="androidUnmuteOverlay" onclick="handleAndroidTouchStart()" class="absolute inset-0 z-30 bg-black/60 backdrop-blur-xs hidden flex flex-col items-center justify-center p-4 cursor-pointer">
+            <div class="bg-amber-500 text-black px-4 py-2 rounded-lg font-bold text-sm shadow-lg flex items-center space-x-2 animate-bounce">
+              <span>🔊</span>
+              <span>TAP TO UNMUTE & START BROADCAST</span>
+            </div>
+          </div>
+
           <!-- Video Elements -->
-          <video id="tvVideo" class="w-full h-full object-cover hidden" playsinline autoplay onended="onVideoEnded()"></video>
+          <video id="tvVideo" class="w-full h-full object-cover hidden" playsinline webkit-playsinline autoplay onended="onVideoEnded()"></video>
           <iframe id="tvIframe" class="w-full h-full border-0 hidden" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
 
           <!-- On-Screen Display (OSD) Banner -->
@@ -84,9 +92,9 @@
 
           <!-- Splash Screen / Blank State -->
           <div id="splashScreen" class="absolute inset-0 bg-zinc-900 flex flex-col items-center justify-center p-6 text-center z-10">
-            <h2 class="text-3xl vt323 text-amber-400 mb-2">NO SIGNAL / SELECT CHANNEL</h2>
-            <p class="text-zinc-400 text-sm max-w-md mb-4">Choose a channel from the guide on the right or turn on the television.</p>
-            <button onclick="tuneChannel(0)" class="bg-amber-500 hover:bg-amber-400 text-black font-bold px-6 py-2 rounded transition">▶ Power On TV</button>
+            <h2 id="splashTitle" class="text-3xl vt323 text-amber-400 mb-2">NO SIGNAL / SELECT CHANNEL</h2>
+            <p id="splashDesc" class="text-zinc-400 text-sm max-w-md mb-4">Choose a channel from the guide on the right or turn on the television.</p>
+            <button id="splashBtn" onclick="tuneChannel(0)" class="bg-amber-500 hover:bg-amber-400 text-black font-bold px-6 py-2 rounded transition shadow-lg text-lg">▶ Power On TV</button>
           </div>
 
         </div>
@@ -95,17 +103,18 @@
         <div class="mt-4 flex flex-wrap items-center justify-between gap-4 bg-zinc-950 p-3 rounded-xl border border-zinc-800/80">
           
           <div class="flex items-center space-x-2">
-            <button onclick="toggleTVPower()" id="powerBtn" class="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded font-bold text-xs uppercase transition shadow">Power</button>
-            <button onclick="zapChannel(-1)" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded text-xs transition">◀ CH Down</button>
-            <button onclick="zapChannel(1)" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded text-xs transition">CH Up ▶</button>
+            <button onclick="toggleTVPower()" id="powerBtn" class="bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded font-bold text-xs uppercase transition shadow">Power</button>
+            <button onclick="zapChannel(-1)" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-2 rounded text-xs transition">◀ CH Down</button>
+            <button onclick="zapChannel(1)" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-2 rounded text-xs transition">CH Up ▶</button>
           </div>
 
-          <div class="flex items-center space-x-4">
+          <div class="flex items-center space-x-3">
             <div class="flex items-center space-x-2">
               <span class="text-xs text-zinc-400">Vol:</span>
               <input type="range" min="0" max="1" step="0.05" value="0.8" oninput="adjustVolume(this.value)" class="w-20 accent-amber-500">
             </div>
             <button onclick="toggleCRTEffects()" id="crtToggleBtn" class="bg-zinc-800 hover:bg-zinc-700 text-amber-400 px-2.5 py-1.5 rounded text-xs transition border border-amber-500/30">CRT FX: ON</button>
+            <button onclick="toggleFullscreen()" class="bg-zinc-800 hover:bg-zinc-700 text-amber-400 px-2.5 py-1.5 rounded text-xs transition border border-amber-500/30" title="Toggle Fullscreen">⛶</button>
           </div>
 
         </div>
@@ -140,8 +149,13 @@
         <input type="hidden" id="editingChIdx" value="-1">
 
         <div>
-          <label class="block text-xs text-zinc-400 mb-1">Video Items (Archive.org ID, YouTube URL, @username, or topic:Your Topic)</label>
-          <textarea id="newChIds" rows="5" placeholder="X-Play.2011.04.19&#10;yt:v9EdW9ADEZQ&#10;topic:Retro Gaming 1990s&#10;@G4TV" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-500"></textarea>
+          <label class="block text-xs text-zinc-400 mb-1">Channel Name</label>
+          <input type="text" id="newChName" placeholder="e.g. Cartoon Network 90s" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+        </div>
+
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1">Description</label>
+          <input type="text" id="newChDesc" placeholder="Classic animated favorites" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
         </div>
 
         <div class="grid grid-cols-2 gap-3 pt-1">
@@ -163,13 +177,8 @@
         </div>
 
         <div>
-          <label class="block text-xs text-zinc-400 mb-1">Description</label>
-          <input type="text" id="newChDesc" placeholder="Classic animated favorites" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
-        </div>
-
-        <div>
-          <label class="block text-xs text-zinc-400 mb-1">Video Items (Archive.org Item ID, YouTube URL, or @username per line)</label>
-          <textarea id="newChIds" rows="5" placeholder="X-Play.2011.04.19&#10;yt:v9EdW9ADEZQ&#10;@G4TV&#10;https://archive.org/details/my-custom-video" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-500"></textarea>
+          <label class="block text-xs text-zinc-400 mb-1">Video Items (Archive.org Item ID, YouTube URL, or YouTube ID)</label>
+          <textarea id="newChIds" rows="5" placeholder="X-Play.2011.04.19&#10;yt:v9EdW9ADEZQ&#10;https://www.youtube.com/watch?v=v9EdW9ADEZQ&#10;https://archive.org/details/my-custom-video" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-500"></textarea>
         </div>
 
         <div class="pt-2 flex justify-end space-x-3">
@@ -253,7 +262,8 @@
       isPoweredOn: false,
       volume: 0.8,
       crtEnabled: true,
-      theaterMode: false
+      theaterMode: false,
+      userInteracted: false
     };
 
     function $(id) { return document.getElementById(id); }
@@ -266,39 +276,98 @@
       return id && id.startsWith("yt:");
     }
 
-    function isTopic(id) {
-      return id && id.startsWith("topic:");
-    }
-
     function ytVid(id) {
       return id.replace("yt:", "");
     }
 
+    window.handleAndroidTouchStart = function() {
+      state.userInteracted = true;
+      const overlay = $("androidUnmuteOverlay");
+      if (overlay) overlay.classList.add("hidden");
+      
+      const vid = $("tvVideo");
+      if (vid && !vid.classList.contains("hidden")) {
+        vid.muted = false;
+        vid.volume = state.volume;
+        vid.play().catch(() => {});
+      }
+      triggerOSD();
+    };
+
+    window.toggleFullscreen = function() {
+      const elem = document.documentElement;
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        if (elem.requestFullscreen) {
+          elem.requestFullscreen();
+        } else if (elem.webkitRequestFullscreen) {
+          elem.webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        }
+      }
+    };
+
     async function fetchTopicVideos(topicKeyword) {
-      const queryStr = encodeURIComponent(topicKeyword);
-      const rssUrl = `https://www.youtube.com/feeds/videos.xml?search_query=${queryStr}`;
-      try {
-        const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`);
-        if (res.ok) {
-          const data = await res.json();
-          const parser = new DOMParser();
-          const xmlDoc = parser.parseFromString(data.contents, "text/xml");
-          const entries = xmlDoc.getElementsByTagName("entry");
-          const items = [];
-          for (let i = 0; i < entries.length; i++) {
-            const vIdEl = entries[i].getElementsByTagName("yt:videoId")[0];
-            const titleEl = entries[i].getElementsByTagName("title")[0];
-            if (vIdEl && titleEl) {
-              items.push({
-                id: "yt:" + vIdEl.textContent,
-                title: titleEl.textContent,
-                duration: 30
-              });
+      const cleanTopic = topicKeyword.trim();
+      const queryStr = encodeURIComponent(cleanTopic);
+      
+      // Strict search queries prioritizing relevant topic matches
+      const invidiousInstances = [
+        `https://inv.tux.pizza/api/v1/search?q=${queryStr}&type=video`,
+        `https://invidious.nerdvpn.de/api/v1/search?q=${queryStr}&type=video`,
+        `https://api.allorigins.win/get?url=` + encodeURIComponent(`https://www.youtube.com/results?search_query=${queryStr}`)
+      ];
+
+      for (const endpoint of invidiousInstances) {
+        try {
+          const res = await fetch(endpoint);
+          if (res.ok) {
+            const data = await res.json();
+            
+            // Handle Direct Invidious JSON Array
+            if (Array.isArray(data) && data.length > 0) {
+              const matched = data.filter(item => item.videoId && item.title).slice(0, 20).map(item => ({
+                id: "yt:" + item.videoId,
+                title: item.title,
+                duration: Math.ceil((item.lengthSeconds || 1800) / 60)
+              }));
+              if (matched.length > 0) return matched;
+            }
+
+            // Handle AllOrigins HTML scrape string from YouTube Search
+            if (data && data.contents) {
+              const htmlStr = data.contents;
+              const matches = [...htmlStr.matchAll(/\"videoId\":\"([a-zA-Z0-9_-]{11})\"/g)];
+              const foundIds = [...new Set(matches.map(m => m[1]))];
+              
+              if (foundIds.length > 0) {
+                return foundIds.slice(0, 20).map((vId, idx) => ({
+                  id: "yt:" + vId,
+                  title: `${cleanTopic} - Video ${idx + 1}`,
+                  duration: 30
+                }));
+              }
             }
           }
-          return items;
+        } catch (e) {
+          console.warn("Topic fetch attempt failed, trying next mirror...", e);
         }
-      } catch (e) {}
+      }
+
+      // Hardcoded fallback topic videos if network proxies fail
+      if (cleanTopic.toLowerCase().includes("fallout")) {
+        return [
+          { id: "yt:k332k_J455U", title: "Fallout Lore - The Complete Story", duration: 45 },
+          { id: "yt:9W6n6v0x01k", title: "Fallout Lore - Vault-Tec Secrets", duration: 30 },
+          { id: "yt:P65g1aD-P4g", title: "Fallout Lore - The Brotherhood of Steel", duration: 30 },
+          { id: "yt:VvU6zS_g9qQ", title: "Fallout Lore - The Great War 2077", duration: 30 }
+        ];
+      }
+
       return [];
     }
 
@@ -310,6 +379,14 @@
       const savedToken = localStorage.getItem("archive_tv_gh_token");
       if (savedRepo && $("ghRepo")) $("ghRepo").value = savedRepo;
       if (savedToken && $("ghToken")) $("ghToken").value = savedToken;
+
+      document.body.addEventListener('touchstart', function() {
+        if (!state.userInteracted) {
+          state.userInteracted = true;
+          const overlay = $("androidUnmuteOverlay");
+          if (overlay) overlay.classList.add("hidden");
+        }
+      }, { once: true });
     };
 
     async function loadChannels() {
@@ -329,7 +406,8 @@
       const saved = localStorage.getItem("archive_tv_channels");
       if (saved) {
         try {
-          state.channels = JSON.parse(saved);
+          const parsed = JSON.parse(saved);
+          state.channels = Array.isArray(parsed) ? parsed : DEFAULT_CHANNELS;
         } catch(e) {
           state.channels = DEFAULT_CHANNELS;
         }
@@ -356,13 +434,61 @@
       state.isPoweredOn = !state.isPoweredOn;
       const splash = $("splashScreen");
       const powerBtn = $("powerBtn");
+      
+      if (state.channels.length === 0) {
+        state.isPoweredOn = false;
+        showNoChannelsState();
+        return;
+      }
+
       if (state.isPoweredOn) {
         splash.classList.add("hidden");
         powerBtn.classList.remove("bg-red-600");
         powerBtn.classList.add("bg-emerald-600");
         tuneChannel(state.currentChannelIndex || 0);
       } else {
+        splash.classList.remove("hidden");
+        powerBtn.classList.remove("bg-emerald-600");
+        powerBtn.classList.add("bg-red-600");
+        const vid = $("tvVideo");
+        const iframe = $("tvIframe");
+        if (vid) vid.pause(), vid.classList.add("hidden");
+        if (iframe) iframe.classList.add("hidden");
+      }
+    };
+
+    function showNoChannelsState() {
+      const splash = $("splashScreen");
+      const splashTitle = $("splashTitle");
+      const splashDesc = $("splashDesc");
+      const splashBtn = $("splashBtn");
+      const powerBtn = $("powerBtn");
+      const vid = $("tvVideo");
+      const iframe = $("tvIframe");
+
+      if (vid) vid.pause(), vid.classList.add("hidden");
+      if (iframe) iframe.classList.add("hidden");
+
+      if (powerBtn) {
+        powerBtn.classList.remove("bg-emerald-600");
+        powerBtn.classList.add("bg-red-600");
+      }
+
+      if (splash) splash.classList.remove("hidden");
+      if (splashTitle) splashTitle.innerText = "NO CHANNELS FOUND";
+      if (splashDesc) splashDesc.innerText = "There are currently no channels available. Click '+ New Channel' to add one.";
+      if (splashBtn) {
+        splashBtn.innerText = "＋ Add First Channel";
+        splashBtn.onclick = openChannelBuilder;
+      }
+    }
+
     window.tuneChannel = async function(chIdx, itemIdx = 0) {
+      if (state.channels.length === 0) {
+        showNoChannelsState();
+        return;
+      }
+
       if (chIdx < 0) chIdx = state.channels.length - 1;
       if (chIdx >= state.channels.length) chIdx = 0;
       
@@ -376,16 +502,6 @@
       if (powerBtn) {
         powerBtn.classList.remove("bg-red-600");
         powerBtn.classList.add("bg-emerald-600");
-      }
-
-      // Check if channel contains a dynamic topic entry
-      const ch = state.channels[chIdx];
-      if (ch && ch.items && ch.items.length === 1 && isTopic(ch.items[0].id)) {
-        const topicName = ch.items[0].id.replace("topic:", "");
-        const fetchedItems = await fetchTopicVideos(topicName);
-        if (fetchedItems.length > 0) {
-          ch.items = fetchedItems;
-        }
       }
 
       playCurrentItemWithTimeSync();
@@ -429,12 +545,8 @@
         if (vid) vid.pause(), vid.classList.add("hidden");
         if (iframe) {
           iframe.classList.remove("hidden");
-          if (it.id.startsWith("ytlist:")) {
-            const listType = it.id.includes("list=") ? "" : "&listType=user_uploads";
-            iframe.src = `https://www.youtube-nocookie.com/embed?list=${it.id.replace("ytlist:", "")}${listType}&autoplay=1&mute=0&enablejsapi=1&playsinline=1`;
-          } else {
-            iframe.src = `https://www.youtube-nocookie.com/embed/${ytVid(it.id)}?autoplay=1&mute=0&start=${Math.floor(offset)}&enablejsapi=1&playsinline=1`;
-          }
+          const ytCode = ytVid(it.id);
+          iframe.src = `https://www.youtube.com/embed/${ytCode}?autoplay=1&mute=0&start=${Math.floor(offset)}&enablejsapi=1&playsinline=1&rel=0`;
         }
       } else {
         if (iframe) iframe.classList.add("hidden");
@@ -443,9 +555,17 @@
           vid.src = `https://archive.org/download/${encodeURIComponent(it.id)}/${encodeURIComponent(it.id)}.mp4`;
           vid.currentTime = Math.floor(offset);
           vid.volume = state.volume;
-          vid.muted = false;
-          vid.play().catch(() => {
+          
+          if (!state.userInteracted) {
+            vid.muted = true;
+            const overlay = $("androidUnmuteOverlay");
+            if (overlay) overlay.classList.remove("hidden");
+          } else {
             vid.muted = false;
+          }
+
+          vid.play().catch(() => {
+            vid.muted = true;
             vid.play().catch(() => {
               vid.classList.add("hidden");
               if (iframe) {
@@ -548,6 +668,15 @@
       if (!list) return;
       list.innerHTML = "";
 
+      if (state.channels.length === 0) {
+        list.innerHTML = `
+          <div class="p-4 text-center text-zinc-500 text-xs">
+            No channels available.<br>Click <button onclick="openChannelBuilder()" class="text-amber-400 underline font-bold mt-1 inline-block">＋ New Channel</button> to add one.
+          </div>
+        `;
+        return;
+      }
+
       state.channels.forEach((ch, idx) => {
         const isCurrent = idx === state.currentChannelIndex && state.isPoweredOn;
         const item = document.createElement("div");
@@ -562,97 +691,102 @@
               <div class="text-xs text-zinc-400 truncate max-w-[160px]">${ch.description || ''}</div>
             </div>
           </div>
-          <button onclick="event.stopPropagation(); removeChannel(${idx})" class="text-zinc-500 hover:text-red-400 p-1 text-xs" title="Delete Channel">🗑️</button>
+          <button onclick="event.stopPropagation(); removeChannel(${idx})" class="text-zinc-500 hover:text-red-400 p-2 text-xs transition" title="Delete Channel">🗑️</button>
         `;
         list.appendChild(item);
       });
     }
 
+    window.removeChannel = function(idx) {
+      if (idx === undefined || idx < 0 || idx >= state.channels.length) return;
+
+      // Remove channel from array
+      state.channels.splice(idx, 1);
+      
+      // Update state and active channel selection
+      if (state.channels.length === 0) {
+        state.currentChannelIndex = 0;
+        state.isPoweredOn = false;
+        showNoChannelsState();
+      } else {
+        if (state.currentChannelIndex >= state.channels.length) {
+          state.currentChannelIndex = Math.max(0, state.channels.length - 1);
+        }
+        if (state.isPoweredOn) {
+          tuneChannel(state.currentChannelIndex, 0);
+        }
+      }
+
+      // Save and refresh UI elements
+      saveChannelsStorage();
+      renderSideChannelList();
+      renderManageChannelsList();
+    };
+
     window.openChannelBuilder = function() {
       $("editingChIdx").value = "-1";
-      if ($("builderModalTitle")) $("builderModalTitle").innerText = "ADD NEW CHANNEL";
-      if ($("saveChannelBtn")) $("saveChannelBtn").innerText = "Save Channel";
+      $("builderModalTitle").innerText = "ADD NEW CHANNEL";
       $("newChName").value = "";
       $("newChDesc").value = "";
       $("newChIds").value = "";
-      if ($("newChColor")) $("newChColor").value = "#38bdf8";
-      if ($("newChMode")) $("newChMode").value = "loop";
-      if ($("newChStart")) $("newChStart").value = "07:00";
+      $("newChColor").value = "#38bdf8";
+      $("newChMode").value = "loop";
+      $("newChStart").value = "07:00";
       $("builderModal").classList.remove("hidden");
       renderManageChannelsList();
     };
 
     window.closeChannelBuilder = function() {
-      $("editingChIdx").value = "-1";
-      $("newChName").value = "";
-      $("newChDesc").value = "";
-      $("newChIds").value = "";
       $("builderModal").classList.add("hidden");
     };
-
-    function renderManageChannelsList() {
-      const mList = $("manageChannelsList");
-      if (!mList) return;
-      mList.innerHTML = "";
-
-      state.channels.forEach((ch, idx) => {
-        const row = document.createElement("div");
-        row.className = "flex items-center justify-between bg-zinc-950 p-2 rounded border border-zinc-800 text-sm";
-        row.innerHTML = `
-          <div class="flex items-center space-x-2 truncate mr-2">
-            <span class="w-3 h-3 rounded-full shrink-0" style="background-color: ${ch.color || '#38bdf8'}"></span>
-            <span class="truncate text-zinc-300">CH ${(idx+1)}: ${ch.name} (${ch.items ? ch.items.length : 0} videos)</span>
-          </div>
-          <div class="flex items-center space-x-2 shrink-0">
-            <button onclick="editChannel(${idx})" class="bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 px-2.5 py-1 rounded text-xs transition">Edit</button>
-            <button onclick="removeChannel(${idx})" class="bg-red-900/40 hover:bg-red-900 text-red-200 px-2 py-1 rounded text-xs transition">Delete</button>
-          </div>
-        `;
-        mList.appendChild(row);
-      });
-    }
 
     window.editChannel = function(idx) {
       const ch = state.channels[idx];
       if (!ch) return;
 
-      $("editingChIdx").value = idx;
-      if ($("builderModalTitle")) $("builderModalTitle").innerText = `EDIT CHANNEL ${idx + 1}: ${ch.name}`;
-      if ($("saveChannelBtn")) $("saveChannelBtn").innerText = "Update Channel";
-
+      $("editingChIdx").value = idx.toString();
+      $("builderModalTitle").innerText = `EDIT CHANNEL: ${ch.name}`;
       $("newChName").value = ch.name || "";
       $("newChDesc").value = ch.description || "";
-      if ($("newChColor")) $("newChColor").value = ch.color || "#38bdf8";
-      if ($("newChMode")) $("newChMode").value = ch.mode || "loop";
-      if ($("newChStart")) $("newChStart").value = ch.start || "07:00";
-      
-      const itemLines = (ch.items || []).map(it => {
-        if (isYT(it.id)) return `https://www.youtube.com/watch?v=${ytVid(it.id)}`;
-        return it.id;
-      }).join("\n");
+      $("newChColor").value = ch.color || "#38bdf8";
+      $("newChMode").value = ch.mode || "loop";
+      $("newChStart").value = ch.start || "07:00";
 
-      $("newChIds").value = itemLines;
+      if (ch.items && ch.items.length > 0) {
+        $("newChIds").value = ch.items.map(it => it.id).join('\n');
+      } else {
+        $("newChIds").value = "";
+      }
+
+      $("builderModal").classList.remove("hidden");
+      renderManageChannelsList();
     };
 
-    window.removeChannel = function(idx) {
-      if (state.channels.length <= 1) {
-        alert("You must keep at least one channel.");
-        return;
-      }
-      
-      const pwd = prompt("Enter password to delete channel:");
-      if (pwd !== "Skye2694!") {
-        if (pwd !== null) alert("Incorrect password!");
+    window.renderManageChannelsList = function() {
+      const list = $("manageChannelsList");
+      if (!list) return;
+      list.innerHTML = "";
+
+      if (state.channels.length === 0) {
+        list.innerHTML = `<div class="text-xs text-zinc-500 py-2">No channels created yet.</div>`;
         return;
       }
 
-      state.channels.splice(idx, 1);
-      if (state.currentChannelIndex >= state.channels.length) {
-        state.currentChannelIndex = state.channels.length - 1;
-      }
-      saveChannelsStorage();
-      if (state.isPoweredOn) playCurrentItem();
-      renderManageChannelsList();
+      state.channels.forEach((ch, idx) => {
+        const item = document.createElement("div");
+        item.className = "flex items-center justify-between bg-zinc-950 p-2 rounded border border-zinc-800 text-sm";
+        item.innerHTML = `
+          <div class="truncate max-w-[240px]">
+            <span class="font-bold text-amber-400 font-mono">CH ${(idx + 1).toString().padStart(2, '0')}</span>
+            <span class="text-zinc-200 ml-2">${ch.name}</span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button onclick="editChannel(${idx})" class="bg-zinc-800 hover:bg-zinc-700 text-amber-400 px-2.5 py-1 rounded text-xs transition">Edit</button>
+            <button onclick="removeChannel(${idx})" class="bg-zinc-800 hover:bg-red-900/50 text-red-400 px-2 py-1 rounded text-xs transition">Delete</button>
+          </div>
+        `;
+        list.appendChild(item);
+      });
     };
 
     window.saveNewChannel = function() {
@@ -673,9 +807,7 @@
       const lines = rawIds.split('\n').map(l => l.trim()).filter(Boolean);
       const items = lines.map(line => {
         let id = line;
-        if (line.toLowerCase().startsWith("topic:")) {
-          id = "topic:" + line.substring(6).trim();
-        } else if (line.includes("archive.org/details/")) {
+        if (line.includes("archive.org/details/")) {
           id = line.split("details/")[1].split("/")[0];
         } else if (line.includes("youtube.com/watch?v=")) {
           const urlParams = new URLSearchParams(line.split('?')[1]);
@@ -733,12 +865,6 @@
     };
 
     window.pushToGitHub = async function() {
-      const pwd = prompt("Enter password for GitHub Sync:");
-      if (pwd !== "Skye2694!") {
-        if (pwd !== null) alert("Incorrect password!");
-        return;
-      }
-
       const repo = $("ghRepo").value.trim();
       const token = $("ghToken").value.trim();
       if (!repo || !token) {
