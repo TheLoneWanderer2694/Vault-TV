@@ -200,8 +200,13 @@
         <input type="hidden" id="editingChIdx" value="-1">
 
         <div>
+          <label class="block text-xs text-zinc-400 mb-1">Channel Name</label>
+          <input type="text" id="newChName" placeholder="e.g. Retro Cartoons, Action Network" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-bold focus:outline-none focus:border-amber-500">
+        </div>
+
+        <div>
           <label class="block text-xs text-zinc-400 mb-1">Video Items & Duration (HH:MM:SS, MM:SS, or 1h30m)</label>
-          <textarea id="newChIds" rows="5" placeholder="yt:v9EdW9ADEZQ, 1:45:30&#10;https://www.youtube.com/watch?v=NAWOdnuDBBU | 2h 15m&#10;@G4TV&#10;X-Play.2011.04.19, 01:30:00" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-500"></textarea>
+          <textarea id="newChIds" rows="5" placeholder="yt:v9EdW9ADEZQ, 1:45:30&#10;https://www.youtube.com/playlist?list=PL386270CE323D4829&#10;https://www.youtube.com/watch?v=NAWOdnuDBBU | 2h 15m&#10;@G4TV&#10;X-Play.2011.04.19, 01:30:00" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-500"></textarea>
         </div>
 
         <div>
@@ -217,13 +222,9 @@
           <div>
             <label class="block text-xs text-zinc-400 mb-1">Playback Mode</label>
             <select id="newChMode" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
-              <option value="loop">Loop (Sequential)</option>
+              <option value="loop">Loop (Continuous)</option>
               <option value="shuffle">Shuffle (Random)</option>
             </select>
-          </div>
-          <div>
-            <label class="block text-xs text-zinc-400 mb-1">Start Time (HH:MM:SS)</label>
-            <input type="time" step="1" id="newChStart" value="07:00:00" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
           </div>
         </div>
 
@@ -286,7 +287,6 @@
         description: "Classic video game reviews and retro coverage",
         color: "#38bdf8",
         mode: "loop",
-        start: "07:00",
         items: [
           { id: "X-Play.2011.04.19", title: "X-Play April 19, 2011" },
           { id: "X-Play.2008.11.26", title: "X-Play November 26, 2008" },
@@ -298,7 +298,6 @@
         description: "Vintage animation and classic cartoons",
         color: "#f43f5e",
         mode: "loop",
-        start: "07:00",
         items: [
           { id: "yt:v9EdW9ADEZQ", title: "Classic Cartoon Feature" },
           { id: "yt:NAWOdnuDBBU", title: "Vintage Animation Reel" }
@@ -329,6 +328,58 @@
 
     function ytVid(id) {
       return id.replace("yt:", "");
+    }
+
+    async function fetchPlaylistVideosFromUrl(urlStr) {
+      let listId = "";
+      if (urlStr.includes("list=")) {
+        listId = urlStr.split("list=")[1].split("&")[0];
+      }
+      if (!listId) return [];
+
+      const proxies = [
+        `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(`https://www.youtube.com/feeds/videos.xml?playlist_id=${listId}`)}`,
+        `https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.youtube.com/feeds/videos.xml?playlist_id=${listId}`)}`,
+        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://www.youtube.com/feeds/videos.xml?playlist_id=${listId}`)}`
+      ];
+
+      for (const proxy of proxies) {
+        try {
+          const res = await fetch(proxy);
+          if (res.ok) {
+            const data = await res.json();
+            
+            if (data.items && data.items.length > 0) {
+              return data.items.map(item => {
+                const vidId = item.link.includes("v=") ? item.link.split("v=")[1].split("&")[0] : (item.guid ? item.guid.split(":").pop() : "");
+                return {
+                  id: "yt:" + vidId,
+                  title: item.title || "Playlist Video",
+                  duration: 30
+                };
+              }).filter(it => it.id !== "yt:");
+            }
+
+            if (data.contents) {
+              const xmlText = data.contents;
+              const matches = [...xmlText.matchAll(/<yt:videoId>([a-zA-Z0-9_-]{11})<\/yt:videoId>/g)];
+              const titleMatches = [...xmlText.matchAll(/<title>(.*?)<\/title>/g)];
+              
+              const foundIds = [...new Set(matches.map(m => m[1]))];
+              if (foundIds.length > 0) {
+                return foundIds.map((vId, idx) => ({
+                  id: "yt:" + vId,
+                  title: (titleMatches[idx + 1] ? titleMatches[idx + 1][1] : "Playlist Video"),
+                  duration: 30
+                }));
+              }
+            }
+          }
+        } catch(e) {
+          console.warn("Failed fetching playlist RSS:", e);
+        }
+      }
+      return [];
     }
 
     async function fetchChannelVideosFromUser(inputStr) {
@@ -386,6 +437,30 @@
       return [];
     }
 
+    async function fetchYouTubeVideoTitle(vId) {
+      const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${vId}&format=json`;
+      const proxies = [
+        `https://api.allorigins.win/get?url=${encodeURIComponent(oembedUrl)}`,
+        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(oembedUrl)}`
+      ];
+
+      for (const proxy of proxies) {
+        try {
+          const res = await fetch(proxy);
+          if (res.ok) {
+            const data = await res.json();
+            const contents = data.contents ? JSON.parse(data.contents) : data;
+            if (contents && contents.title) {
+              return contents.title;
+            }
+          }
+        } catch (e) {
+          console.warn("Title fetch failed for video:", vId, e);
+        }
+      }
+      return `YouTube Video (${vId})`;
+    }
+
     window.onload = function() {
       loadChannels();
       setInterval(updateClock, 1000);
@@ -394,6 +469,26 @@
       const savedToken = localStorage.getItem("archive_tv_gh_token");
       if (savedRepo && $("ghRepo")) $("ghRepo").value = savedRepo;
       if (savedToken && $("ghToken")) $("ghToken").value = savedToken;
+
+      const vid = $("tvVideo");
+      if (vid) {
+        vid.addEventListener('ended', window.onVideoEnded);
+      }
+
+      // Polling timer to catch video endings even if iframe postMessage is blocked
+      setInterval(checkVideoEndProgress, 1000);
+
+      // Handle message events from YouTube iframe or embedded Archive players
+      window.addEventListener('message', function(event) {
+        if (!event.data) return;
+        try {
+          const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+          // YouTube API state 0 = ENDED
+          if (data.event === 'onStateChange' && data.info === 0) {
+            window.onVideoEnded();
+          }
+        } catch(e) {}
+      });
 
       document.body.addEventListener('touchstart', function() {
         if (!state.userInteracted) {
@@ -427,23 +522,16 @@
       }
 
       const now = new Date();
-      const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+      const currentSeconds = Math.floor(now.getTime() / 1000);
 
       state.channels.forEach((ch, idx) => {
         const isActive = state.isPoweredOn && state.currentChannelIndex === idx;
 
-        // Calculate schedule items & exact start timestamps
-        let startSeconds = 0;
-        if (ch.start) {
-          const sParts = ch.start.split(':').map(p => parseInt(p, 10) || 0);
-          startSeconds = sParts[0] * 3600 + (sParts[1] || 0) * 60 + (sParts[2] || 0);
-        }
-
         const itemDurations = (ch.items || []).map(item => item.durationSec || parseDurationInSeconds(item.duration));
         const totalChannelDuration = itemDurations.reduce((acc, curr) => acc + curr, 0) || 1800;
         
-        let relativeSeconds = (currentSeconds - startSeconds) % totalChannelDuration;
-        if (relativeSeconds < 0) relativeSeconds += totalChannelDuration;
+        // Compute continuous loop offset relative to unix epoch time
+        let relativeSeconds = currentSeconds % totalChannelDuration;
 
         let nowIdx = 0;
         let elapsedInItem = relativeSeconds;
@@ -464,17 +552,13 @@
         const nowDuration = itemDurations[nowIdx] || 1800;
         const nextItemStartSeconds = nowItemStartSeconds + nowDuration;
 
-        function formatTimeFromSec(sec) {
-          let totalSec = (sec + 86400) % 86400;
-          let hrs = Math.floor(totalSec / 3600);
-          let mins = Math.floor((totalSec % 3600) / 60);
-          const ampm = hrs >= 12 ? 'PM' : 'AM';
-          hrs = hrs % 12 || 12;
-          return `${hrs}:${mins.toString().padStart(2, '0')} ${ampm}`;
+        function formatTimeFromUnix(unixSec) {
+          const date = new Date(unixSec * 1000);
+          return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
 
-        const nowTimeStr = formatTimeFromSec(nowItemStartSeconds);
-        const nextTimeStr = formatTimeFromSec(nextItemStartSeconds);
+        const nowTimeStr = formatTimeFromUnix(nowItemStartSeconds);
+        const nextTimeStr = formatTimeFromUnix(nextItemStartSeconds);
 
         const row = document.createElement("div");
         row.className = `grid grid-cols-12 gap-2 p-2.5 rounded-lg border transition cursor-pointer items-center ${
@@ -498,7 +582,7 @@
                 <span class="bg-blue-950 px-1.5 py-0.5 rounded border border-blue-700/50">${nowTimeStr}</span>
                 <span class="truncate">${nowItem.title}</span>
               </div>
-              <div class="text-[10px] text-blue-300 truncate mt-0.5">${ch.description || "On Air Now"}</div>
+              <div class="text-[10px] text-blue-300 truncate mt-0.5">${ch.description || "Continuous Broadcast Loop"}</div>
             </div>
             ${isActive ? '<span class="text-[10px] bg-red-600 text-white font-bold px-1.5 py-0.5 rounded animate-pulse shrink-0 ml-2">LIVE</span>' : ''}
           </div>
@@ -625,6 +709,7 @@
       state.currentChannelIndex = chIdx;
       state.currentItemIndex = itemIdx;
       state.isPoweredOn = true;
+      state.currentItemStartTime = Date.now();
       
       const splash = $("splashScreen");
       if (splash) splash.classList.add("hidden");
@@ -638,288 +723,20 @@
       triggerOSD();
     };
 
-    function playCurrentItemWithTimeSync() {
+    function checkVideoEndProgress() {
+      if (!state.isPoweredOn || state.channels.length === 0) return;
       const ch = state.channels[state.currentChannelIndex];
       if (!ch || !ch.items || ch.items.length === 0) return;
 
-      const now = new Date();
-      const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-      
-      let cumulativeSeconds = 0;
-      const itemDurations = ch.items.map(item => (item.duration || 30) * 60);
-      const totalChannelDuration = itemDurations.reduce((acc, curr) => acc + curr, 0);
-      const daySeconds = currentSeconds % totalChannelDuration;
-
-      let targetItemIdx = 0;
-      let elapsedInItem = daySeconds;
-      
-      for (let i = 0; i < itemDurations.length; i++) {
-        if (elapsedInItem < itemDurations[i]) {
-          targetItemIdx = i;
-          break;
-        }
-        elapsedInItem -= itemDurations[i];
-        if (i === itemDurations.length - 1) {
-          targetItemIdx = i;
-        }
-      }
-
-      state.currentItemIndex = targetItemIdx;
-      const offset = elapsedInItem;
-      const it = ch.items[targetItemIdx];
-
-      const vid = $("tvVideo");
-      const iframe = $("tvIframe");
-
-      if (isYT(it.id)) {
-        if (vid) vid.pause(), vid.classList.add("hidden");
-        if (iframe) {
-          iframe.classList.remove("hidden");
-          const ytCode = ytVid(it.id);
-          iframe.src = `https://www.youtube.com/embed/${ytCode}?autoplay=1&mute=0&start=${Math.floor(offset)}&enablejsapi=1&playsinline=1&rel=0`;
-        }
-      } else {
-        if (iframe) iframe.classList.add("hidden");
-        if (vid) {
-          vid.classList.remove("hidden");
-          vid.src = `https://archive.org/download/${encodeURIComponent(it.id)}/${encodeURIComponent(it.id)}.mp4`;
-          vid.currentTime = Math.floor(offset);
-          vid.volume = state.volume;
-          
-          if (!state.userInteracted) {
-            vid.muted = true;
-            const overlay = $("androidUnmuteOverlay");
-            if (overlay) overlay.classList.remove("hidden");
-          } else {
-            vid.muted = false;
-          }
-
-          vid.play().catch(() => {
-            vid.muted = true;
-            vid.play().catch(() => {
-              vid.classList.add("hidden");
-              if (iframe) {
-                iframe.classList.remove("hidden");
-                iframe.src = `${ARCHIVE_EMBED(it.id)}?autoplay=1&start=${Math.floor(offset)}`;
-              }
-            });
-          });
-        }
-      }
-      renderSideChannelList();
-    }
-
-    window.onVideoEnded = function() {
-      const ch = state.channels[state.currentChannelIndex];
-      if (!ch || !ch.items) return;
-      state.currentItemIndex = (state.currentItemIndex + 1) % ch.items.length;
-      
       const it = ch.items[state.currentItemIndex];
-      const vid = $("tvVideo");
-      const iframe = $("tvIframe");
+      if (!it) return;
 
-      if (isYT(it.id)) {
-        if (vid) vid.pause(), vid.classList.add("hidden");
-        if (iframe) {
-          iframe.classList.remove("hidden");
-          iframe.src = `https://www.youtube-nocookie.com/embed/${ytVid(it.id)}?autoplay=1&mute=0&start=0&enablejsapi=1&playsinline=1`;
-        }
-      } else {
-        if (iframe) iframe.classList.add("hidden");
-        if (vid) {
-          vid.classList.remove("hidden");
-          vid.src = `https://archive.org/download/${encodeURIComponent(it.id)}/${encodeURIComponent(it.id)}.mp4`;
-          vid.currentTime = 0;
-          vid.volume = state.volume;
-          vid.muted = false;
-          vid.play().catch(() => {
-            vid.muted = false;
-            vid.play().catch(() => {
-              vid.classList.add("hidden");
-              if (iframe) {
-                iframe.classList.remove("hidden");
-                iframe.src = `${ARCHIVE_EMBED(it.id)}?autoplay=1&start=0`;
-              }
-            });
-          });
-        }
-      }
-      triggerOSD();
-      renderSideChannelList();
-    };
-
-    function playCurrentItem() {
-      playCurrentItemWithTimeSync();
-    }
-
-    window.zapChannel = function(dir) {
-      let next = state.currentChannelIndex + dir;
-      tuneChannel(next, 0);
-    };
-
-    window.adjustVolume = function(val) {
-      state.volume = parseFloat(val);
-      const vid = $("tvVideo");
-      if (vid) vid.volume = state.volume;
-    };
-
-    window.toggleCRTEffects = function() {
-      state.crtEnabled = !state.crtEnabled;
-      const overlay = $("crtOverlay");
-      const btn = $("crtToggleBtn");
-      if (overlay) overlay.style.display = state.crtEnabled ? "block" : "none";
-      if (btn) btn.innerText = state.crtEnabled ? "CRT FX: ON" : "CRT FX: OFF";
-    };
-
-    window.toggleTheaterMode = function() {
-      state.theaterMode = !state.theaterMode;
-    };
-
-    function triggerOSD() {
-      const osd = $("osdBanner");
-      if (!osd) return;
-      const ch = state.channels[state.currentChannelIndex];
-      if (!ch) return;
-      const it = ch.items[state.currentItemIndex || 0];
-
-      $("osdChan").innerText = `CH ${(state.currentChannelIndex + 1).toString().padStart(2, '0')} - ${ch.name}`;
-      $("osdTitle").innerText = it ? it.title : "Live Program";
-      if ($("osdTimeRange")) $("osdTimeRange").innerText = state.currentProgramTimeRange || "";
-
-      osd.classList.remove("opacity-0");
-      setTimeout(() => {
-        osd.classList.add("opacity-0");
-      }, 4000);
-    }
-
-    function renderSideChannelList() {
-      const sideList = $("sideChannelList");
-      if (!sideList) return;
-      sideList.innerHTML = "";
-
-      if (!state.channels || state.channels.length === 0) {
-        sideList.innerHTML = `<div class="p-4 text-center text-xs text-zinc-500">No channels added yet.<br>Click <strong>＋ New Channel</strong> above to create one.</div>`;
-        return;
-      }
-
-      state.channels.forEach((ch, idx) => {
-        const isActive = state.isPoweredOn && state.currentChannelIndex === idx;
-        const div = document.createElement("div");
-        div.className = `p-3 rounded-lg border cursor-pointer transition flex items-center justify-between ${
-          isActive 
-            ? "bg-amber-500/10 border-amber-500/50 text-amber-300" 
-            : "bg-zinc-950/60 border-zinc-800/80 hover:bg-zinc-800/60 text-zinc-300"
-        }`;
-        div.onclick = () => tuneChannel(idx, 0);
-
-        div.innerHTML = `
-          <div class="flex items-center space-x-3 overflow-hidden">
-            <span class="font-mono font-bold text-xs px-2 py-1 bg-zinc-900 border border-zinc-700 rounded text-amber-400">CH ${(idx + 1).toString().padStart(2, '0')}</span>
-            <div class="truncate">
-              <div class="font-bold text-sm truncate">${ch.name}</div>
-              <div class="text-xs text-zinc-400 truncate">${ch.description || (ch.items ? ch.items.length + " items" : "Custom Channel")}</div>
-            </div>
-          </div>
-          <div class="flex items-center space-x-2">
-            <button onclick="event.stopPropagation(); editChannel(${idx})" class="text-xs text-zinc-400 hover:text-white px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700">Edit</button>
-            <button onclick="event.stopPropagation(); removeChannel(${idx})" class="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded bg-zinc-900 border border-red-900/50 hover:bg-red-950">🗑️</button>
-          </div>
-        `;
-        sideList.appendChild(div);
-      });
-    }
-
-    function renderManageChannelsList() {
-      const container = $("manageChannelsList");
-      if (!container) return;
-      container.innerHTML = "";
-
-      if (!state.channels || state.channels.length === 0) {
-        container.innerHTML = `<div class="text-xs text-zinc-500 py-2">No channels stored.</div>`;
-        return;
-      }
-
-      state.channels.forEach((ch, idx) => {
-        const div = document.createElement("div");
-        div.className = "flex items-center justify-between p-2 bg-zinc-950 border border-zinc-800 rounded text-xs";
-        div.innerHTML = `
-          <div class="truncate mr-2">
-            <span class="font-bold text-amber-400">CH ${(idx + 1).toString().padStart(2, '0')}</span> — ${ch.name}
-          </div>
-          <div class="flex items-center space-x-1 shrink-0">
-            <button onclick="editChannel(${idx})" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-2 py-1 rounded">Edit</button>
-            <button onclick="removeChannel(${idx})" class="bg-red-900/40 hover:bg-red-900 text-red-300 px-2 py-1 rounded">Delete</button>
-          </div>
-        `;
-        container.appendChild(div);
-      });
-    }
-
-    window.openChannelBuilder = function() {
-      $("editingChIdx").value = "-1";
-      $("builderModalTitle").innerText = "ADD NEW CHANNEL";
-      const nameInput = $("newChName");
-      if (nameInput) nameInput.value = "";
-      $("newChDesc").value = "";
-      $("newChIds").value = "";
-      $("newChColor").value = "#38bdf8";
-      $("newChMode").value = "loop";
-      $("newChStart").value = "07:00:00";
-      $("builderModal").classList.remove("hidden");
-      renderManageChannelsList();
-    };
-
-    window.closeChannelBuilder = function() {
-      $("builderModal").classList.add("hidden");
-    };
-
-    window.removeChannel = function(idx) {
-      if (idx < 0 || idx >= state.channels.length) return;
-      state.channels.splice(idx, 1);
-      saveChannelsStorage();
-
-      if (state.channels.length === 0) {
-        showNoChannelsState();
-      } else if (state.currentChannelIndex >= state.channels.length) {
-        tuneChannel(0, 0);
-      } else if (state.currentChannelIndex === idx) {
-        tuneChannel(state.currentChannelIndex, 0);
-      } else {
-        renderSideChannelList();
-      }
-    };
-
-    function parseDurationInSeconds(valStr) {
-      if (!valStr) return 1800; // 30 mins default (1800 sec)
-      const str = valStr.toString().trim().toLowerCase();
+      const durSec = it.durationSec || parseDurationInSeconds(it.duration) || 1800;
       
-      // Support 1h30m / 2h / 45m / 30s text strings
-      if (str.includes("h") || str.includes("m") || str.includes("s")) {
-        let totalSec = 0;
-        const hMatch = str.match(/(\d+(?:\.\d+)?)\s*h/);
-        const mMatch = str.match(/(\d+(?:\.\d+)?)\s*m/);
-        const sMatch = str.match(/(\d+(?:\.\d+)?)\s*s/);
-        if (hMatch) totalSec += parseFloat(hMatch[1]) * 3600;
-        if (mMatch) totalSec += parseFloat(mMatch[1]) * 60;
-        if (sMatch) totalSec += parseFloat(sMatch[1]);
-        if (totalSec > 0) return Math.round(totalSec);
+      // If we've passed the item duration, advance to next video
+      if (state.currentItemStartTime && (Date.now() - state.currentItemStartTime) >= (durSec * 1000)) {
+        window.onVideoEnded();
       }
-
-      // Check for HH:MM:SS or MM:SS format
-      if (str.includes(":")) {
-        const parts = str.split(":").map(p => parseFloat(p) || 0);
-        if (parts.length === 3) {
-          return Math.round(parts[0] * 3600 + parts[1] * 60 + parts[2]);
-        } else if (parts.length === 2) {
-          return Math.round(parts[0] * 60 + parts[1]);
-        }
-      }
-      
-      const num = parseFloat(str);
-      if (!isNaN(num) && num > 0) {
-        return num < 180 ? Math.round(num * 60) : Math.round(num);
-      }
-      return 1800;
     }
 
     function playCurrentItemWithTimeSync() {
@@ -927,20 +744,12 @@
       if (!ch || !ch.items || ch.items.length === 0) return;
 
       const now = new Date();
-      const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+      const currentSeconds = Math.floor(now.getTime() / 1000);
       
-      // Parse start time (HH:MM:SS) if configured
-      let startSeconds = 0;
-      if (ch.start) {
-        const sParts = ch.start.split(':').map(p => parseInt(p, 10) || 0);
-        startSeconds = sParts[0] * 3600 + (sParts[1] || 0) * 60 + (sParts[2] || 0);
-      }
-
       const itemDurations = ch.items.map(item => item.durationSec || parseDurationInSeconds(item.duration));
       const totalChannelDuration = itemDurations.reduce((acc, curr) => acc + curr, 0) || 1800;
       
-      let relativeSeconds = (currentSeconds - startSeconds) % totalChannelDuration;
-      if (relativeSeconds < 0) relativeSeconds += totalChannelDuration;
+      let relativeSeconds = currentSeconds % totalChannelDuration;
 
       let targetItemIdx = 0;
       let elapsedInItem = relativeSeconds;
@@ -957,6 +766,7 @@
       }
 
       state.currentItemIndex = targetItemIdx;
+      state.currentItemStartTime = Date.now() - (elapsedInItem * 1000);
       const offset = elapsedInItem;
       const it = ch.items[targetItemIdx];
 
@@ -968,7 +778,8 @@
         if (iframe) {
           iframe.classList.remove("hidden");
           const ytCode = ytVid(it.id);
-          iframe.src = `https://www.youtube.com/embed/${ytCode}?autoplay=1&mute=0&start=${Math.floor(offset)}&enablejsapi=1&playsinline=1&rel=0`;
+          const domain = window.location.origin || 'http://localhost';
+          iframe.src = `https://www.youtube.com/embed/${ytCode}?autoplay=1&mute=0&start=${Math.floor(offset)}&enablejsapi=1&origin=${encodeURIComponent(domain)}&playsinline=1&rel=0`;
         }
       } else {
         if (iframe) iframe.classList.add("hidden");
@@ -986,51 +797,286 @@
             vid.muted = false;
           }
 
-          vid.play().catch(() => {
-            vid.muted = true;
-            vid.play().catch(() => {
+          const playPromise = vid.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(() => {
               vid.classList.add("hidden");
               if (iframe) {
                 iframe.classList.remove("hidden");
                 iframe.src = `${ARCHIVE_EMBED(it.id)}?autoplay=1&start=${Math.floor(offset)}`;
               }
             });
-          });
+          }
         }
       }
+    }
+
+    function triggerOSD() {
+      const banner = $("osdBanner");
+      if (!banner) return;
+      
+      const ch = state.channels[state.currentChannelIndex];
+      const it = ch && ch.items ? ch.items[state.currentItemIndex] : null;
+
+      if ($("osdChan")) $("osdChan").innerText = `CH ${(state.currentChannelIndex + 1).toString().padStart(2, '0')}`;
+      if ($("osdTitle")) $("osdTitle").innerText = it ? (it.title || it.id) : "No Signal";
+      if ($("osdSub")) $("osdSub").innerText = ch ? ch.name.toUpperCase() : "ARCHIVE TV";
+
+      const durSec = it ? (it.durationSec || parseDurationInSeconds(it.duration) || 1800) : 1800;
+      if ($("osdTimeRange")) $("osdTimeRange").innerText = `DUR: ${formatDurationDisplay(durSec)}`;
+
+      banner.classList.remove("opacity-0");
+      banner.classList.add("opacity-100");
+
+      if (window.osdTimeout) clearTimeout(window.osdTimeout);
+      window.osdTimeout = setTimeout(() => {
+        banner.classList.remove("opacity-100");
+        banner.classList.add("opacity-0");
+      }, 4000);
+    }
+
+    window.onVideoEnded = function() {
+      const ch = state.channels[state.currentChannelIndex];
+      if (!ch || !ch.items || ch.items.length === 0) return;
+      
+      state.currentItemIndex = (state.currentItemIndex + 1) % ch.items.length;
+      state.currentItemStartTime = Date.now();
+      
+      const it = ch.items[state.currentItemIndex];
+      const vid = $("tvVideo");
+      const iframe = $("tvIframe");
+
+      if (isYT(it.id)) {
+        if (vid) {
+          vid.pause();
+          vid.removeAttribute("src");
+          vid.classList.add("hidden");
+        }
+        if (iframe) {
+          iframe.classList.remove("hidden");
+          const domain = window.location.origin || 'http://localhost';
+          iframe.src = `https://www.youtube.com/embed/${ytVid(it.id)}?autoplay=1&mute=0&start=0&enablejsapi=1&origin=${encodeURIComponent(domain)}&playsinline=1&rel=0`;
+        }
+      } else {
+        if (iframe) {
+          iframe.classList.add("hidden");
+          iframe.src = "about:blank";
+        }
+        if (vid) {
+          vid.classList.remove("hidden");
+          vid.src = `https://archive.org/download/${encodeURIComponent(it.id)}/${encodeURIComponent(it.id)}.mp4`;
+          vid.currentTime = 0;
+          vid.volume = state.volume;
+          vid.muted = false;
+          
+          const playPromise = vid.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(() => {
+              vid.classList.add("hidden");
+              if (iframe) {
+                iframe.classList.remove("hidden");
+                iframe.src = `${ARCHIVE_EMBED(it.id)}?autoplay=1&start=0`;
+              }
+            });
+          }
+        }
+      }
+      triggerOSD();
       renderSideChannelList();
+    };
+
+    function parseDurationInSeconds(val) {
+      if (!val) return 1800; // default 30 mins
+      if (typeof val === 'number') return val > 100 ? val : val * 60;
+      
+      const str = String(val).trim().toLowerCase();
+      if (!str) return 1800;
+
+      // HH:MM:SS format
+      if (str.includes(":")) {
+        const parts = str.split(":").map(p => parseFloat(p) || 0);
+        if (parts.length === 3) {
+          return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
+        } else if (parts.length === 2) {
+          return (parts[0] * 60) + parts[1];
+        }
+      }
+
+      // Natural language parser like "1h 30m 45s" or "2h"
+      let totalSec = 0;
+      let matched = false;
+      
+      const hMatch = str.match(/(\d+(?:\.\d+)?)\s*h/);
+      if (hMatch) { totalSec += parseFloat(hMatch[1]) * 3600; matched = true; }
+
+      const mMatch = str.match(/(\d+(?:\.\d+)?)\s*m/);
+      if (mMatch) { totalSec += parseFloat(mMatch[1]) * 60; matched = true; }
+
+      const sMatch = str.match(/(\d+(?:\.\d+)?)\s*s/);
+      if (sMatch) { totalSec += parseFloat(sMatch[1]); matched = true; }
+
+      if (matched) return totalSec;
+
+      const parsedNum = parseFloat(str);
+      if (isNaN(parsedNum)) return 1800;
+
+      // If number is small, assume minutes; if large, assume seconds
+      return parsedNum > 300 ? parsedNum : parsedNum * 60;
+    }
+
+    function formatDurationDisplay(durSec) {
+      const sec = Math.floor(durSec || 0);
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = sec % 60;
+
+      if (h > 0) {
+        return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+      }
+      return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function renderSideChannelList() {
+      const container = $("sideChannelList");
+      if (!container) return;
+      container.innerHTML = "";
+
+      if (state.channels.length === 0) {
+        container.innerHTML = `<div class="p-4 text-center text-zinc-500 text-xs">No channels available.</div>`;
+        return;
+      }
+
+      state.channels.forEach((ch, idx) => {
+        const isActive = state.isPoweredOn && state.currentChannelIndex === idx;
+        const item = document.createElement("div");
+        item.className = `p-2.5 rounded-lg border transition cursor-pointer flex items-center justify-between ${
+          isActive 
+            ? "bg-amber-500/10 border-amber-500/60 text-amber-300" 
+            : "bg-zinc-950/60 border-zinc-800/80 hover:bg-zinc-800/50 text-zinc-300"
+        }`;
+        item.onclick = () => tuneChannel(idx);
+
+        item.innerHTML = `
+          <div class="flex items-center space-x-2.5 overflow-hidden">
+            <span class="w-3 h-3 rounded-full shrink-0" style="background-color: ${ch.color || '#38bdf8'}"></span>
+            <div class="truncate">
+              <div class="font-bold text-xs flex items-center space-x-1.5">
+                <span class="text-amber-400 font-mono">CH ${(idx + 1).toString().padStart(2, '0')}</span>
+                <span class="truncate">${ch.name}</span>
+              </div>
+              <div class="text-[10px] text-zinc-500 truncate">${ch.description || (ch.items ? ch.items.length + " items" : "No items")}</div>
+            </div>
+          </div>
+          ${isActive ? '<span class="text-[10px] font-bold text-amber-400 animate-pulse">● LIVE</span>' : ''}
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    window.zapChannel = function(direction) {
+      if (state.channels.length === 0) return;
+      let nextIdx = state.currentChannelIndex + direction;
+      if (nextIdx < 0) nextIdx = state.channels.length - 1;
+      if (nextIdx >= state.channels.length) nextIdx = 0;
+      tuneChannel(nextIdx);
+    };
+
+    window.adjustVolume = function(val) {
+      state.volume = parseFloat(val);
+      const vid = $("tvVideo");
+      if (vid) vid.volume = state.volume;
+    };
+
+    window.toggleCRTEffects = function() {
+      state.crtEnabled = !state.crtEnabled;
+      const crt = $("crtOverlay");
+      const btn = $("crtToggleBtn");
+      if (crt) crt.style.display = state.crtEnabled ? "block" : "none";
+      if (btn) btn.innerText = state.crtEnabled ? "CRT FX: ON" : "CRT FX: OFF";
+    };
+
+    window.toggleTheaterMode = function() {
+      state.theaterMode = !state.theaterMode;
+      const header = document.querySelector("header");
+      const sidebar = document.querySelector(".w-full.lg\\:w-80");
+      if (header) header.style.display = state.theaterMode ? "none" : "flex";
+      if (sidebar) sidebar.style.display = state.theaterMode ? "none" : "flex";
+    };
+
+    window.openChannelBuilder = function() {
+      $("editingChIdx").value = "-1";
+      $("newChName").value = "";
+      $("newChDesc").value = "";
+      $("newChIds").value = "";
+      $("builderModalTitle").innerText = "ADD NEW CHANNEL";
+      $("saveChannelBtn").innerText = "Save Channel";
+      renderManageChannelsList();
+      $("builderModal").classList.remove("hidden");
+    };
+
+    window.closeChannelBuilder = function() {
+      $("builderModal").classList.add("hidden");
+    };
+
+    function renderManageChannelsList() {
+      const container = $("manageChannelsList");
+      if (!container) return;
+      container.innerHTML = "";
+
+      if (state.channels.length === 0) {
+        container.innerHTML = `<div class="text-xs text-zinc-500">No channels added yet.</div>`;
+        return;
+      }
+
+      state.channels.forEach((ch, idx) => {
+        const item = document.createElement("div");
+        item.className = "flex items-center justify-between bg-zinc-950 p-2 rounded border border-zinc-800 text-xs";
+        item.innerHTML = `
+          <div class="truncate mr-2">
+            <span class="font-bold text-amber-400">CH ${(idx + 1).toString().padStart(2, '0')}:</span>
+            <span class="text-zinc-200 font-bold ml-1">${ch.name}</span>
+            <span class="text-zinc-500 text-[10px] ml-2">(${ch.items ? ch.items.length : 0} videos)</span>
+          </div>
+          <div class="flex items-center space-x-1 shrink-0">
+            <button onclick="editChannel(${idx})" class="bg-indigo-900/60 hover:bg-indigo-800 text-indigo-200 px-2 py-1 rounded">Edit</button>
+            <button onclick="removeChannel(${idx})" class="bg-red-900/60 hover:bg-red-800 text-red-200 px-2 py-1 rounded">Delete</button>
+          </div>
+        `;
+        container.appendChild(item);
+      });
     }
 
     window.editChannel = function(idx) {
       const ch = state.channels[idx];
       if (!ch) return;
 
-      $("editingChIdx").value = idx.toString();
-      $("builderModalTitle").innerText = `EDIT CHANNEL: ${ch.name}`;
-      const nameInput = $("newChName");
-      if (nameInput) nameInput.value = ch.name || "";
+      $("editingChIdx").value = idx;
+      $("newChName").value = ch.name || "";
       $("newChDesc").value = ch.description || "";
       $("newChColor").value = ch.color || "#38bdf8";
       $("newChMode").value = ch.mode || "loop";
-      $("newChStart").value = ch.start || "07:00:00";
+      $("builderModalTitle").innerText = `EDIT CHANNEL ${(idx + 1).toString().padStart(2, '0')}`;
+      $("saveChannelBtn").innerText = "Update Channel";
 
-      if (ch.items && ch.items.length > 0) {
-        $("newChIds").value = ch.items.map(it => {
-          const sec = it.durationSec || parseDurationInSeconds(it.duration);
-          const hrs = Math.floor(sec / 3600);
-          const mins = Math.floor((sec % 3600) / 60);
-          const secs = (sec % 60).toString().padStart(2, '0');
-          if (hrs > 0) {
-            return `${it.id}, ${hrs}:${mins.toString().padStart(2, '0')}:${secs}`;
-          }
-          return `${it.id}, ${mins}:${secs}`;
-        }).join('\n');
-      } else {
-        $("newChIds").value = "";
+      const formattedLines = (ch.items || []).map(it => {
+        const durSec = it.durationSec || parseDurationInSeconds(it.duration);
+        return `${it.id}, ${formatDurationDisplay(durSec)}`;
+      }).join('\n');
+
+      $("newChIds").value = formattedLines;
+    };
+
+    window.removeChannel = function(idx) {
+      state.channels.splice(idx, 1);
+      saveChannelsStorage();
+      if (state.currentChannelIndex >= state.channels.length) {
+        state.currentChannelIndex = Math.max(0, state.channels.length - 1);
       }
-
-      $("builderModal").classList.remove("hidden");
-      renderManageChannelsList();
+      if (state.channels.length === 0) {
+        showNoChannelsState();
+      } else {
+        tuneChannel(state.currentChannelIndex);
+      }
     };
 
     window.saveNewChannel = async function() {
@@ -1041,7 +1087,6 @@
       const rawLines = $("newChIds").value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
       const color = $("newChColor").value;
       const mode = $("newChMode").value;
-      const start = $("newChStart").value;
 
       let items = [];
 
@@ -1059,16 +1104,25 @@
           specifiedDurationSec = parseDurationInSeconds(parts[1].trim());
         }
 
-        if (entry.startsWith("@") || entry.includes("youtube.com/@") || entry.includes("youtube.com/user/")) {
+        if (entry.includes("list=")) {
+          const fetchedPlaylist = await fetchPlaylistVideosFromUrl(entry);
+          if (fetchedPlaylist.length > 0) {
+            items.push(...fetchedPlaylist.map(it => ({ ...it, durationSec: specifiedDurationSec, duration: specifiedDurationSec / 60 })));
+          }
+        } else if (entry.startsWith("@") || entry.includes("youtube.com/@") || entry.includes("youtube.com/user/")) {
           const fetched = await fetchChannelVideosFromUser(entry);
           items.push(...fetched.map(it => ({ ...it, durationSec: specifiedDurationSec, duration: specifiedDurationSec / 60 })));
-        } else if (entry.startsWith("yt:") || entry.includes("youtube.com/watch")) {
+        } else if (entry.startsWith("yt:") || entry.includes("youtube.com/watch") || entry.includes("youtu.be/")) {
           let vidId = entry;
           if (entry.includes("v=")) {
             vidId = entry.split("v=")[1].split("&")[0];
+          } else if (entry.includes("youtu.be/")) {
+            vidId = entry.split("youtu.be/")[1].split("?")[0];
           }
-          if (!vidId.startsWith("yt:")) vidId = "yt:" + vidId;
-          items.push({ id: vidId, title: "YouTube Video", durationSec: specifiedDurationSec, duration: specifiedDurationSec / 60 });
+          if (vidId.startsWith("yt:")) vidId = vidId.replace("yt:", "");
+          
+          const autoTitle = await fetchYouTubeVideoTitle(vidId);
+          items.push({ id: "yt:" + vidId, title: autoTitle, durationSec: specifiedDurationSec, duration: specifiedDurationSec / 60 });
         } else {
           items.push({ id: entry, title: entry, durationSec: specifiedDurationSec, duration: specifiedDurationSec / 60 });
         }
@@ -1078,7 +1132,7 @@
         items.push({ id: "X-Play.2011.04.19", title: "Default Broadcast", durationSec: 1800, duration: 30 });
       }
 
-      const newCh = { name, description: desc, color, mode, start, items };
+      const newCh = { name, description: desc, color, mode, items };
 
       if (editIdx >= 0 && editIdx < state.channels.length) {
         state.channels[editIdx] = newCh;
