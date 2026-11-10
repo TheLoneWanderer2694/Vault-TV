@@ -140,16 +140,36 @@
         <input type="hidden" id="editingChIdx" value="-1">
 
         <div>
-          <label class="block text-xs text-zinc-400 mb-1">Channel Name</label>
-          <input type="text" id="newChName" placeholder="e.g. Retro Anime & Toonami" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+          <label class="block text-xs text-zinc-400 mb-1">Video Items (Archive.org ID, YouTube URL, @username, or topic:Your Topic)</label>
+          <textarea id="newChIds" rows="5" placeholder="X-Play.2011.04.19&#10;yt:v9EdW9ADEZQ&#10;topic:Retro Gaming 1990s&#10;@G4TV" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-500"></textarea>
         </div>
+
+        <div class="grid grid-cols-2 gap-3 pt-1">
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Accent Color</label>
+            <input type="color" id="newChColor" value="#38bdf8" class="w-full h-9 bg-zinc-950 border border-zinc-700 rounded px-1 py-1 cursor-pointer">
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Playback Mode</label>
+            <select id="newChMode" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+              <option value="loop">Loop (Sequential)</option>
+              <option value="shuffle">Shuffle (Random)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">Start Time (HH:MM)</label>
+            <input type="time" id="newChStart" value="07:00" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+          </div>
+        </div>
+
         <div>
           <label class="block text-xs text-zinc-400 mb-1">Description</label>
           <input type="text" id="newChDesc" placeholder="Classic animated favorites" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
         </div>
+
         <div>
-          <label class="block text-xs text-zinc-400 mb-1">Video Items (Archive.org Item ID or YouTube URL per line)</label>
-          <textarea id="newChIds" rows="5" placeholder="X-Play.2011.04.19&#10;yt:v9EdW9ADEZQ&#10;https://archive.org/details/my-custom-video" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-500"></textarea>
+          <label class="block text-xs text-zinc-400 mb-1">Video Items (Archive.org Item ID, YouTube URL, or @username per line)</label>
+          <textarea id="newChIds" rows="5" placeholder="X-Play.2011.04.19&#10;yt:v9EdW9ADEZQ&#10;@G4TV&#10;https://archive.org/details/my-custom-video" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-500"></textarea>
         </div>
 
         <div class="pt-2 flex justify-end space-x-3">
@@ -246,8 +266,40 @@
       return id && id.startsWith("yt:");
     }
 
+    function isTopic(id) {
+      return id && id.startsWith("topic:");
+    }
+
     function ytVid(id) {
       return id.replace("yt:", "");
+    }
+
+    async function fetchTopicVideos(topicKeyword) {
+      const queryStr = encodeURIComponent(topicKeyword);
+      const rssUrl = `https://www.youtube.com/feeds/videos.xml?search_query=${queryStr}`;
+      try {
+        const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`);
+        if (res.ok) {
+          const data = await res.json();
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(data.contents, "text/xml");
+          const entries = xmlDoc.getElementsByTagName("entry");
+          const items = [];
+          for (let i = 0; i < entries.length; i++) {
+            const vIdEl = entries[i].getElementsByTagName("yt:videoId")[0];
+            const titleEl = entries[i].getElementsByTagName("title")[0];
+            if (vIdEl && titleEl) {
+              items.push({
+                id: "yt:" + vIdEl.textContent,
+                title: titleEl.textContent,
+                duration: 30
+              });
+            }
+          }
+          return items;
+        }
+      } catch (e) {}
+      return [];
     }
 
     window.onload = function() {
@@ -310,17 +362,7 @@
         powerBtn.classList.add("bg-emerald-600");
         tuneChannel(state.currentChannelIndex || 0);
       } else {
-        splash.classList.remove("hidden");
-        powerBtn.classList.remove("bg-emerald-600");
-        powerBtn.classList.add("bg-red-600");
-        const vid = $("tvVideo");
-        const iframe = $("tvIframe");
-        if (vid) vid.pause(), vid.classList.add("hidden");
-        if (iframe) iframe.src = "", iframe.classList.add("hidden");
-      }
-    };
-
-    window.tuneChannel = function(chIdx, itemIdx = 0) {
+    window.tuneChannel = async function(chIdx, itemIdx = 0) {
       if (chIdx < 0) chIdx = state.channels.length - 1;
       if (chIdx >= state.channels.length) chIdx = 0;
       
@@ -334,6 +376,16 @@
       if (powerBtn) {
         powerBtn.classList.remove("bg-red-600");
         powerBtn.classList.add("bg-emerald-600");
+      }
+
+      // Check if channel contains a dynamic topic entry
+      const ch = state.channels[chIdx];
+      if (ch && ch.items && ch.items.length === 1 && isTopic(ch.items[0].id)) {
+        const topicName = ch.items[0].id.replace("topic:", "");
+        const fetchedItems = await fetchTopicVideos(topicName);
+        if (fetchedItems.length > 0) {
+          ch.items = fetchedItems;
+        }
       }
 
       playCurrentItemWithTimeSync();
@@ -377,7 +429,12 @@
         if (vid) vid.pause(), vid.classList.add("hidden");
         if (iframe) {
           iframe.classList.remove("hidden");
-          iframe.src = `https://www.youtube-nocookie.com/embed/${ytVid(it.id)}?autoplay=1&mute=0&start=${Math.floor(offset)}&enablejsapi=1&playsinline=1`;
+          if (it.id.startsWith("ytlist:")) {
+            const listType = it.id.includes("list=") ? "" : "&listType=user_uploads";
+            iframe.src = `https://www.youtube-nocookie.com/embed?list=${it.id.replace("ytlist:", "")}${listType}&autoplay=1&mute=0&enablejsapi=1&playsinline=1`;
+          } else {
+            iframe.src = `https://www.youtube-nocookie.com/embed/${ytVid(it.id)}?autoplay=1&mute=0&start=${Math.floor(offset)}&enablejsapi=1&playsinline=1`;
+          }
         }
       } else {
         if (iframe) iframe.classList.add("hidden");
@@ -518,6 +575,9 @@
       $("newChName").value = "";
       $("newChDesc").value = "";
       $("newChIds").value = "";
+      if ($("newChColor")) $("newChColor").value = "#38bdf8";
+      if ($("newChMode")) $("newChMode").value = "loop";
+      if ($("newChStart")) $("newChStart").value = "07:00";
       $("builderModal").classList.remove("hidden");
       renderManageChannelsList();
     };
@@ -539,7 +599,10 @@
         const row = document.createElement("div");
         row.className = "flex items-center justify-between bg-zinc-950 p-2 rounded border border-zinc-800 text-sm";
         row.innerHTML = `
-          <span class="truncate text-zinc-300 mr-2">CH ${(idx+1)}: ${ch.name} (${ch.items ? ch.items.length : 0} videos)</span>
+          <div class="flex items-center space-x-2 truncate mr-2">
+            <span class="w-3 h-3 rounded-full shrink-0" style="background-color: ${ch.color || '#38bdf8'}"></span>
+            <span class="truncate text-zinc-300">CH ${(idx+1)}: ${ch.name} (${ch.items ? ch.items.length : 0} videos)</span>
+          </div>
           <div class="flex items-center space-x-2 shrink-0">
             <button onclick="editChannel(${idx})" class="bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 px-2.5 py-1 rounded text-xs transition">Edit</button>
             <button onclick="removeChannel(${idx})" class="bg-red-900/40 hover:bg-red-900 text-red-200 px-2 py-1 rounded text-xs transition">Delete</button>
@@ -559,6 +622,9 @@
 
       $("newChName").value = ch.name || "";
       $("newChDesc").value = ch.description || "";
+      if ($("newChColor")) $("newChColor").value = ch.color || "#38bdf8";
+      if ($("newChMode")) $("newChMode").value = ch.mode || "loop";
+      if ($("newChStart")) $("newChStart").value = ch.start || "07:00";
       
       const itemLines = (ch.items || []).map(it => {
         if (isYT(it.id)) return `https://www.youtube.com/watch?v=${ytVid(it.id)}`;
@@ -594,6 +660,10 @@
       const name = $("newChName").value.trim();
       const desc = $("newChDesc").value.trim();
       const rawIds = $("newChIds").value.trim();
+      const color = $("newChColor") ? $("newChColor").value : "#38bdf8";
+      const mode = $("newChMode") ? $("newChMode").value : "loop";
+      const start = $("newChStart") ? $("newChStart").value : "07:00";
+      const defaultDuration = $("newChDuration") ? parseInt($("newChDuration").value, 10) || 30 : 30;
 
       if (!name || !rawIds) {
         alert("Please enter a channel name and at least one item ID or URL.");
@@ -603,7 +673,9 @@
       const lines = rawIds.split('\n').map(l => l.trim()).filter(Boolean);
       const items = lines.map(line => {
         let id = line;
-        if (line.includes("archive.org/details/")) {
+        if (line.toLowerCase().startsWith("topic:")) {
+          id = "topic:" + line.substring(6).trim();
+        } else if (line.includes("archive.org/details/")) {
           id = line.split("details/")[1].split("/")[0];
         } else if (line.includes("youtube.com/watch?v=")) {
           const urlParams = new URLSearchParams(line.split('?')[1]);
@@ -613,20 +685,23 @@
         } else if (line.length === 11 && !line.includes('.')) {
           id = "yt:" + line;
         }
-        return { id: id, title: id };
+        return { id: id, title: id, duration: defaultDuration };
       });
 
       if (editIdx >= 0 && editIdx < state.channels.length) {
         state.channels[editIdx].name = name;
         state.channels[editIdx].description = desc;
+        state.channels[editIdx].color = color;
+        state.channels[editIdx].mode = mode;
+        state.channels[editIdx].start = start;
         state.channels[editIdx].items = items;
       } else {
         state.channels.push({
           name: name,
           description: desc,
-          color: "#38bdf8",
-          mode: "loop",
-          start: "07:00",
+          color: color,
+          mode: mode,
+          start: start,
           items: items
         });
       }
