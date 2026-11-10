@@ -271,7 +271,8 @@
         </div>
         <div class="flex space-x-2">
           <button onclick="pushToGitHub()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded text-sm transition">Auto-Commit to GitHub</button>
-          <button onclick="downloadJsonFile()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-4 py-2 rounded text-sm transition">Download channels.json</button>
+          <button onclick="downloadJsonFile()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-2 rounded text-sm transition">Download channels.json</button>
+          <button onclick="downloadRokuPackage()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-2 rounded text-sm transition">Download Roku Files</button>
         </div>
 
         <hr class="border-zinc-800 my-2">
@@ -1248,6 +1249,26 @@ window.onload = function() {
       a.download = "channels.json";
       a.click();
       URL.revokeObjectURL(url);
+    };
+
+    window.downloadRokuPackage = function() {
+      const files = {
+        "manifest": `title=Archive TV\nmajor_version=1\nminor_version=0\nbuild_version=1\nmm_icon_focus_hd=pkg:/images/icon.png\nsplash_screen_hd=pkg:/images/splash.png`,
+        "source_main.brs": `sub Main()\n    showChannelSGScreen()\nend sub\n\nsub showChannelSGScreen()\n    screen = CreateObject("roSGScreen")\n    m.port = CreateObject("roMessagePort")\n    screen.SetMessagePort(m.port)\n    scene = screen.CreateScene("MainScene")\n    screen.Show()\n    while(true)\n        msg = wait(0, m.port)\n        if type(msg) = "roSGScreenEvent" and msg.isScreenClosed() then return\n    end while\nend sub`,
+        "components_MainScene.xml": `<?xml version="1.0" encoding="utf-8" ?>\n<component name="MainScene" extends="Scene">\n  <script type="text/brightscript" uri="pkg:/components/MainScene.brs" />\n  <children>\n    <Video id="myVideoPlayer" width="1920" height="1080" translation="[0,0]" />\n    <Rectangle id="osdOverlay" width="1920" height="200" translation="[0,880]" color="0x000000CC">\n      <Label id="channelTitleLabel" translation="[60, 40]" width="1800" height="50" text="ARCHIVE TV" font="font:LargeBoldSystemFont" color="0xF59E0BFF" />\n      <Label id="programTitleLabel" translation="[60, 100]" width="1800" height="40" text="Loading schedule..." font="font:MediumSystemFont" color="0xFFFFFFFF" />\n    </Rectangle>\n  </children>\n</component>`,
+        "components_MainScene.brs": `sub Init()\n    m.myVideo = m.top.findNode("myVideoPlayer")\n    m.chLabel = m.top.findNode("channelTitleLabel")\n    m.progLabel = m.top.findNode("programTitleLabel")\n    m.currentChIdx = 0\n    m.channels = ParseJson('${JSON.stringify(state.channels).replace(/'/g, "\\'")}')\n    if m.channels <> invalid and m.channels.Count() > 0 then tuneChannel(0)\nend sub\n\nsub tuneChannel(idx as Integer)\n    if m.channels = invalid or m.channels.Count() = 0 then return\n    if idx < 0 then idx = m.channels.Count() - 1\n    if idx >= m.channels.Count() then idx = 0\n    m.currentChIdx = idx\n    ch = m.channels[idx]\n    m.chLabel.text = "CH " + (idx + 1).ToStr() + " | " + ch.name\n    if ch.items <> invalid and ch.items.Count() > 0\n        it = ch.items[0]\n        m.progLabel.text = it.title\n        content = CreateObject("roSGNode", "ContentNode")\n        content.url = "https://archive.org/download/" + it.id + "/" + it.id + ".mp4"\n        content.streamformat = "mp4"\n        m.myVideo.content = content\n        m.myVideo.control = "play"\n    end if\nend sub\n\nfunction onKeyEvent(key as String, press as Boolean) as Boolean\n    if press\n        if key = "up" or key = "channelUp"\n            tuneChannel(m.currentChIdx + 1)\n            return true\n        else if key = "down" or key = "channelDown"\n            tuneChannel(m.currentChIdx - 1)\n            return true\n        end if\n    end if\n    return false\nend function`,
+        "channels.json": JSON.stringify(state.channels, null, 2)
+      };
+
+      for (const [fileName, content] of Object.entries(files)) {
+        const blob = new Blob([content], { type: "text/plain" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
     };
 
     window.pushToGitHub = async function() {
