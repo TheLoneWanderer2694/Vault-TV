@@ -1,22 +1,5 @@
 [
   {
-    "name": "Retro Cartoons",
-    "description": "Vintage animation and classic cartoons",
-    "color": "#f43f5e",
-    "mode": "loop",
-    "start": "12:00am",
-    "items": [
-      {
-        "id": "yt:v9EdW9ADEZQ",
-        "title": "Classic Cartoon Feature"
-      },
-      {
-        "id": "yt:NAWOdnuDBBU",
-        "title": "Vintage Animation Reel"
-      }
-    ]
-  },
-  {
     "name": "Toonami Rerun",
     "description": "Toonami all the time",
     "color": "#38bdf8",
