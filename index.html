@@ -149,8 +149,8 @@
         <input type="hidden" id="editingChIdx" value="-1">
 
         <div>
-          <label class="block text-xs text-zinc-400 mb-1">Channel Name</label>
-          <input type="text" id="newChName" placeholder="e.g. Cartoon Network 90s" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+          <label class="block text-xs text-zinc-400 mb-1">Video Items (Archive.org Item ID, YouTube URL, YouTube ID, or @Username / Channel Link)</label>
+          <textarea id="newChIds" rows="5" placeholder="@G4TV&#10;https://www.youtube.com/@IGN&#10;yt:v9EdW9ADEZQ&#10;X-Play.2011.04.19" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-500"></textarea>
         </div>
 
         <div>
@@ -280,94 +280,58 @@
       return id.replace("yt:", "");
     }
 
-    window.handleAndroidTouchStart = function() {
-      state.userInteracted = true;
-      const overlay = $("androidUnmuteOverlay");
-      if (overlay) overlay.classList.add("hidden");
+    async function fetchChannelVideosFromUser(inputStr) {
+      let handle = inputStr.trim();
       
-      const vid = $("tvVideo");
-      if (vid && !vid.classList.contains("hidden")) {
-        vid.muted = false;
-        vid.volume = state.volume;
-        vid.play().catch(() => {});
+      if (handle.includes("youtube.com/")) {
+        const parts = handle.split("youtube.com/")[1].split("/");
+        handle = parts[0];
       }
-      triggerOSD();
-    };
-
-    window.toggleFullscreen = function() {
-      const elem = document.documentElement;
-      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-        if (elem.requestFullscreen) {
-          elem.requestFullscreen();
-        } else if (elem.webkitRequestFullscreen) {
-          elem.webkitRequestFullscreen();
-        }
-      } else {
-        if (document.exitFullscreen) {
-          document.exitFullscreen();
-        } else if (document.webkitExitFullscreen) {
-          document.webkitExitFullscreen();
-        }
+      if (!handle.startsWith("@") && !handle.startsWith("UC")) {
+        handle = "@" + handle;
       }
-    };
 
-    async function fetchTopicVideos(topicKeyword) {
-      const cleanTopic = topicKeyword.trim();
-      const queryStr = encodeURIComponent(cleanTopic);
-      
-      // Strict search queries prioritizing relevant topic matches
-      const invidiousInstances = [
-        `https://inv.tux.pizza/api/v1/search?q=${queryStr}&type=video`,
-        `https://invidious.nerdvpn.de/api/v1/search?q=${queryStr}&type=video`,
-        `https://api.allorigins.win/get?url=` + encodeURIComponent(`https://www.youtube.com/results?search_query=${queryStr}`)
+      const proxies = [
+        `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(`https://www.youtube.com/feeds/videos.xml?user=${handle.replace('@','')}`)}`,
+        `https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.youtube.com/feeds/videos.xml?user=${handle.replace('@','')}`)}`
       ];
 
-      for (const endpoint of invidiousInstances) {
+      for (const proxy of proxies) {
         try {
-          const res = await fetch(endpoint);
+          const res = await fetch(proxy);
           if (res.ok) {
             const data = await res.json();
             
-            // Handle Direct Invidious JSON Array
-            if (Array.isArray(data) && data.length > 0) {
-              const matched = data.filter(item => item.videoId && item.title).slice(0, 20).map(item => ({
-                id: "yt:" + item.videoId,
-                title: item.title,
-                duration: Math.ceil((item.lengthSeconds || 1800) / 60)
-              }));
-              if (matched.length > 0) return matched;
+            if (data.items && data.items.length > 0) {
+              return data.items.map(item => {
+                const vidId = item.link.split("v=")[1] ? item.link.split("v=")[1].split("&")[0] : item.guid.split(":").pop();
+                return {
+                  id: "yt:" + vidId,
+                  title: item.title || "YouTube Video",
+                  duration: 30
+                };
+              });
             }
 
-            // Handle AllOrigins HTML scrape string from YouTube Search
-            if (data && data.contents) {
-              const htmlStr = data.contents;
-              const matches = [...htmlStr.matchAll(/\"videoId\":\"([a-zA-Z0-9_-]{11})\"/g)];
-              const foundIds = [...new Set(matches.map(m => m[1]))];
+            if (data.contents) {
+              const xmlText = data.contents;
+              const matches = [...xmlText.matchAll(/<yt:videoId>([a-zA-Z0-9_-]{11})<\/yt:videoId>/g)];
+              const titleMatches = [...xmlText.matchAll(/<title>(.*?)<\/title>/g)];
               
+              const foundIds = [...new Set(matches.map(m => m[1]))];
               if (foundIds.length > 0) {
-                return foundIds.slice(0, 20).map((vId, idx) => ({
+                return foundIds.map((vId, idx) => ({
                   id: "yt:" + vId,
-                  title: `${cleanTopic} - Video ${idx + 1}`,
+                  title: (titleMatches[idx + 1] ? titleMatches[idx + 1][1] : "YouTube Video"),
                   duration: 30
                 }));
               }
             }
           }
-        } catch (e) {
-          console.warn("Topic fetch attempt failed, trying next mirror...", e);
+        } catch(e) {
+          console.warn("Failed fetching channel RSS:", e);
         }
       }
-
-      // Hardcoded fallback topic videos if network proxies fail
-      if (cleanTopic.toLowerCase().includes("fallout")) {
-        return [
-          { id: "yt:k332k_J455U", title: "Fallout Lore - The Complete Story", duration: 45 },
-          { id: "yt:9W6n6v0x01k", title: "Fallout Lore - Vault-Tec Secrets", duration: 30 },
-          { id: "yt:P65g1aD-P4g", title: "Fallout Lore - The Brotherhood of Steel", duration: 30 },
-          { id: "yt:VvU6zS_g9qQ", title: "Fallout Lore - The Great War 2077", duration: 30 }
-        ];
-      }
-
       return [];
     }
 
@@ -618,7 +582,6 @@
       renderSideChannelList();
     };
 
-    // Alias playCurrentItem for compatibility
     function playCurrentItem() {
       playCurrentItemWithTimeSync();
     }
@@ -700,10 +663,8 @@
     window.removeChannel = function(idx) {
       if (idx === undefined || idx < 0 || idx >= state.channels.length) return;
 
-      // Remove channel from array
       state.channels.splice(idx, 1);
       
-      // Update state and active channel selection
       if (state.channels.length === 0) {
         state.currentChannelIndex = 0;
         state.isPoweredOn = false;
@@ -717,7 +678,6 @@
         }
       }
 
-      // Save and refresh UI elements
       saveChannelsStorage();
       renderSideChannelList();
       renderManageChannelsList();
@@ -726,7 +686,8 @@
     window.openChannelBuilder = function() {
       $("editingChIdx").value = "-1";
       $("builderModalTitle").innerText = "ADD NEW CHANNEL";
-      $("newChName").value = "";
+      const nameInput = $("newChName");
+      if (nameInput) nameInput.value = "";
       $("newChDesc").value = "";
       $("newChIds").value = "";
       $("newChColor").value = "#38bdf8";
@@ -746,7 +707,8 @@
 
       $("editingChIdx").value = idx.toString();
       $("builderModalTitle").innerText = `EDIT CHANNEL: ${ch.name}`;
-      $("newChName").value = ch.name || "";
+      const nameInput = $("newChName");
+      if (nameInput) nameInput.value = ch.name || "";
       $("newChDesc").value = ch.description || "";
       $("newChColor").value = ch.color || "#38bdf8";
       $("newChMode").value = ch.mode || "loop";
@@ -762,92 +724,86 @@
       renderManageChannelsList();
     };
 
-    window.renderManageChannelsList = function() {
+    function renderManageChannelsList() {
       const list = $("manageChannelsList");
       if (!list) return;
       list.innerHTML = "";
 
       if (state.channels.length === 0) {
-        list.innerHTML = `<div class="text-xs text-zinc-500 py-2">No channels created yet.</div>`;
+        list.innerHTML = `<div class="text-xs text-zinc-500 italic p-2">No channels configured.</div>`;
         return;
       }
 
       state.channels.forEach((ch, idx) => {
-        const item = document.createElement("div");
-        item.className = "flex items-center justify-between bg-zinc-950 p-2 rounded border border-zinc-800 text-sm";
-        item.innerHTML = `
-          <div class="truncate max-w-[240px]">
-            <span class="font-bold text-amber-400 font-mono">CH ${(idx + 1).toString().padStart(2, '0')}</span>
-            <span class="text-zinc-200 ml-2">${ch.name}</span>
+        const div = document.createElement("div");
+        div.className = "flex items-center justify-between bg-zinc-950 p-2 rounded border border-zinc-800/80 text-xs";
+        div.innerHTML = `
+          <div class="truncate max-w-[200px]">
+            <span class="font-bold text-amber-400 mr-1">CH ${(idx + 1).toString().padStart(2, '0')}</span>
+            <span class="text-zinc-200">${ch.name}</span>
           </div>
           <div class="flex items-center space-x-2">
-            <button onclick="editChannel(${idx})" class="bg-zinc-800 hover:bg-zinc-700 text-amber-400 px-2.5 py-1 rounded text-xs transition">Edit</button>
-            <button onclick="removeChannel(${idx})" class="bg-zinc-800 hover:bg-red-900/50 text-red-400 px-2 py-1 rounded text-xs transition">Delete</button>
+            <button onclick="editChannel(${idx})" class="text-amber-400 hover:text-amber-300 font-bold px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 transition">Edit</button>
+            <button onclick="removeChannel(${idx})" class="text-red-400 hover:text-red-300 font-bold px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 transition">Delete</button>
           </div>
         `;
-        list.appendChild(item);
+        list.appendChild(div);
       });
-    };
+    }
 
-    window.saveNewChannel = function() {
+    window.saveNewChannel = async function() {
       const editIdx = parseInt($("editingChIdx").value, 10);
-      const name = $("newChName").value.trim();
+      const nameInput = $("newChName");
+      const name = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : "Custom Channel";
       const desc = $("newChDesc").value.trim();
-      const rawIds = $("newChIds").value.trim();
-      const color = $("newChColor") ? $("newChColor").value : "#38bdf8";
-      const mode = $("newChMode") ? $("newChMode").value : "loop";
-      const start = $("newChStart") ? $("newChStart").value : "07:00";
-      const defaultDuration = $("newChDuration") ? parseInt($("newChDuration").value, 10) || 30 : 30;
+      const rawLines = $("newChIds").value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      const color = $("newChColor").value;
+      const mode = $("newChMode").value;
+      const start = $("newChStart").value;
 
-      if (!name || !rawIds) {
-        alert("Please enter a channel name and at least one item ID or URL.");
-        return;
+      let items = [];
+
+      for (const line of rawLines) {
+        if (line.startsWith("@") || line.includes("youtube.com/@") || line.includes("youtube.com/user/")) {
+          const fetched = await fetchChannelVideosFromUser(line);
+          items.push(...fetched);
+        } else if (line.startsWith("yt:") || line.includes("youtube.com/watch")) {
+          let vidId = line;
+          if (line.includes("v=")) {
+            vidId = line.split("v=")[1].split("&")[0];
+          }
+          if (!vidId.startsWith("yt:")) vidId = "yt:" + vidId;
+          items.push({ id: vidId, title: "YouTube Video", duration: 30 });
+        } else {
+          items.push({ id: line, title: line, duration: 30 });
+        }
       }
 
-      const lines = rawIds.split('\n').map(l => l.trim()).filter(Boolean);
-      const items = lines.map(line => {
-        let id = line;
-        if (line.includes("archive.org/details/")) {
-          id = line.split("details/")[1].split("/")[0];
-        } else if (line.includes("youtube.com/watch?v=")) {
-          const urlParams = new URLSearchParams(line.split('?')[1]);
-          id = "yt:" + urlParams.get('v');
-        } else if (line.includes("youtu.be/")) {
-          id = "yt:" + line.split("youtu.be/")[1].split("?")[0];
-        } else if (line.length === 11 && !line.includes('.')) {
-          id = "yt:" + line;
-        }
-        return { id: id, title: id, duration: defaultDuration };
-      });
+      if (items.length === 0) {
+        items.push({ id: "X-Play.2011.04.19", title: "Default Broadcast", duration: 30 });
+      }
+
+      const newCh = { name, description: desc, color, mode, start, items };
 
       if (editIdx >= 0 && editIdx < state.channels.length) {
-        state.channels[editIdx].name = name;
-        state.channels[editIdx].description = desc;
-        state.channels[editIdx].color = color;
-        state.channels[editIdx].mode = mode;
-        state.channels[editIdx].start = start;
-        state.channels[editIdx].items = items;
+        state.channels[editIdx] = newCh;
       } else {
-        state.channels.push({
-          name: name,
-          description: desc,
-          color: color,
-          mode: mode,
-          start: start,
-          items: items
-        });
+        state.channels.push(newCh);
       }
 
       saveChannelsStorage();
       closeChannelBuilder();
-      
-      const targetIdx = editIdx >= 0 ? editIdx : state.channels.length - 1;
-      tuneChannel(targetIdx, 0);
+
+      if (state.channels.length === 1 || !state.isPoweredOn) {
+        tuneChannel(editIdx >= 0 ? editIdx : state.channels.length - 1, 0);
+      }
     };
 
     window.openJsonManager = function() {
+      if ($("jsonPayloadPreview")) {
+        $("jsonPayloadPreview").value = JSON.stringify(state.channels, null, 2);
+      }
       $("jsonModal").classList.remove("hidden");
-      $("jsonPayloadPreview").value = JSON.stringify(state.channels, null, 2);
     };
 
     window.closeJsonManager = function() {
@@ -855,49 +811,43 @@
     };
 
     window.downloadJsonFile = function() {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state.channels, null, 2));
-      const dlAnchor = document.createElement('a');
-      dlAnchor.setAttribute("href", dataStr);
-      dlAnchor.setAttribute("download", "channels.json");
-      document.body.appendChild(dlAnchor);
-      dlAnchor.click();
-      dlAnchor.remove();
+      const blob = new Blob([JSON.stringify(state.channels, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "channels.json";
+      a.click();
+      URL.revokeObjectURL(url);
     };
 
     window.pushToGitHub = async function() {
       const repo = $("ghRepo").value.trim();
       const token = $("ghToken").value.trim();
+
       if (!repo || !token) {
-        alert("Please enter your GitHub repository (username/repo) and Personal Access Token.");
+        alert("Please enter both repository (user/repo) and GitHub Access Token.");
         return;
       }
 
       localStorage.setItem("archive_tv_gh_repo", repo);
       localStorage.setItem("archive_tv_gh_token", token);
 
-      const contentJson = JSON.stringify(state.channels, null, 2);
-      const encodedContent = btoa(unescape(encodeURIComponent(contentJson)));
-      const apiUrl = `https://api.github.com/repos/${repo}/contents/channels.json`;
-
       try {
-        let sha = null;
-        let getRes;
-        try {
-          getRes = await fetch(apiUrl, {
-            headers: { "Authorization": `token ${token}` }
-          });
-        } catch (corsErr) {
-          getRes = await fetch(`https://api.allorigins.win/raw?url=` + encodeURIComponent(apiUrl), {
-            headers: { "Authorization": `token ${token}` }
-          });
+        const getUrl = `https://api.github.com/repos/${repo}/contents/channels.json`;
+        let sha = "";
+        
+        const getRes = await fetch(getUrl, {
+          headers: { "Authorization": `token ${token}` }
+        });
+
+        if (getRes.ok) {
+          const getData = await getRes.json();
+          sha = getData.sha;
         }
 
-        if (getRes && getRes.ok) {
-          const fileData = await getRes.json();
-          if (fileData && fileData.sha) sha = fileData.sha;
-        }
-
-        let putRes = await fetch(apiUrl, {
+        const contentBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(state.channels, null, 2))));
+        
+        const putRes = await fetch(getUrl, {
           method: "PUT",
           headers: {
             "Authorization": `token ${token}`,
@@ -905,22 +855,48 @@
           },
           body: JSON.stringify({
             message: "Update channels.json via Archive TV Builder",
-            content: encodedContent,
-            sha: sha
+            content: contentBase64,
+            sha: sha || undefined
           })
         });
 
         if (putRes.ok) {
-          alert("Success! channels.json was successfully committed to your GitHub repository.");
+          alert("Successfully updated channels.json on GitHub!");
           closeJsonManager();
         } else {
-          downloadJsonFile();
-          alert("Note: Direct browser GitHub API commit was blocked by CORS. We have automatically downloaded your updated 'channels.json' file so you can easily drag and drop it into your repository!");
-          closeJsonManager();
+          const err = await putRes.json();
+          alert("GitHub Sync Error: " + (err.message || "Failed to commit."));
         }
       } catch(e) {
-        downloadJsonFile();
-        alert("Network Error committing directly to GitHub. We have downloaded 'channels.json' to your device so you can upload it to your repo manually.");
+        alert("Network error sync failed: " + e.message);
+      }
+    };
+
+    window.handleAndroidTouchStart = function() {
+      state.userInteracted = true;
+      const overlay = $("androidUnmuteOverlay");
+      if (overlay) overlay.classList.add("hidden");
+      const vid = $("tvVideo");
+      if (vid) {
+        vid.muted = false;
+        vid.play().catch(e => console.warn(e));
+      }
+    };
+
+    window.toggleFullscreen = function() {
+      const tvEl = document.querySelector(".aspect-video");
+      if (!tvEl) return;
+
+      if (!document.fullscreenElement) {
+        if (tvEl.requestFullscreen) {
+          tvEl.requestFullscreen();
+        } else if (tvEl.webkitRequestFullscreen) {
+          tvEl.webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
       }
     };
   </script>
