@@ -131,11 +131,14 @@
   <div id="builderModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-zinc-900 border border-zinc-700 rounded-xl max-w-xl w-full p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
       <div class="flex justify-between items-center mb-4">
-        <h3 class="text-xl font-bold text-amber-400 vt323">ADD / EDIT CHANNEL</h3>
+        <h3 id="builderModalTitle" class="text-xl font-bold text-amber-400 vt323">ADD / EDIT CHANNEL</h3>
         <button onclick="closeChannelBuilder()" class="text-zinc-400 hover:text-white">✕</button>
       </div>
       
       <div class="space-y-4">
+        <!-- Hidden input to track channel index when editing -->
+        <input type="hidden" id="editingChIdx" value="-1">
+
         <div>
           <label class="block text-xs text-zinc-400 mb-1">Channel Name</label>
           <input type="text" id="newChName" placeholder="e.g. Retro Anime & Toonami" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
@@ -151,7 +154,7 @@
 
         <div class="pt-2 flex justify-end space-x-3">
           <button onclick="closeChannelBuilder()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 py-2 rounded text-sm transition">Cancel</button>
-          <button onclick="saveNewChannel()" class="bg-amber-500 hover:bg-amber-400 text-black font-bold px-4 py-2 rounded text-sm transition">Save Channel</button>
+          <button onclick="saveNewChannel()" id="saveChannelBtn" class="bg-amber-500 hover:bg-amber-400 text-black font-bold px-4 py-2 rounded text-sm transition">Save Channel</button>
         </div>
 
         <hr class="border-zinc-800 my-4">
@@ -509,11 +512,21 @@
     }
 
     window.openChannelBuilder = function() {
+      $("editingChIdx").value = "-1";
+      if ($("builderModalTitle")) $("builderModalTitle").innerText = "ADD NEW CHANNEL";
+      if ($("saveChannelBtn")) $("saveChannelBtn").innerText = "Save Channel";
+      $("newChName").value = "";
+      $("newChDesc").value = "";
+      $("newChIds").value = "";
       $("builderModal").classList.remove("hidden");
       renderManageChannelsList();
     };
 
     window.closeChannelBuilder = function() {
+      $("editingChIdx").value = "-1";
+      $("newChName").value = "";
+      $("newChDesc").value = "";
+      $("newChIds").value = "";
       $("builderModal").classList.add("hidden");
     };
 
@@ -526,12 +539,34 @@
         const row = document.createElement("div");
         row.className = "flex items-center justify-between bg-zinc-950 p-2 rounded border border-zinc-800 text-sm";
         row.innerHTML = `
-          <span class="truncate text-zinc-300">CH ${(idx+1)}: ${ch.name}</span>
-          <button onclick="removeChannel(${idx})" class="bg-red-900/40 hover:bg-red-900 text-red-200 px-2 py-1 rounded text-xs transition">Delete</button>
+          <span class="truncate text-zinc-300 mr-2">CH ${(idx+1)}: ${ch.name} (${ch.items ? ch.items.length : 0} videos)</span>
+          <div class="flex items-center space-x-2 shrink-0">
+            <button onclick="editChannel(${idx})" class="bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 px-2.5 py-1 rounded text-xs transition">Edit</button>
+            <button onclick="removeChannel(${idx})" class="bg-red-900/40 hover:bg-red-900 text-red-200 px-2 py-1 rounded text-xs transition">Delete</button>
+          </div>
         `;
         mList.appendChild(row);
       });
     }
+
+    window.editChannel = function(idx) {
+      const ch = state.channels[idx];
+      if (!ch) return;
+
+      $("editingChIdx").value = idx;
+      if ($("builderModalTitle")) $("builderModalTitle").innerText = `EDIT CHANNEL ${idx + 1}: ${ch.name}`;
+      if ($("saveChannelBtn")) $("saveChannelBtn").innerText = "Update Channel";
+
+      $("newChName").value = ch.name || "";
+      $("newChDesc").value = ch.description || "";
+      
+      const itemLines = (ch.items || []).map(it => {
+        if (isYT(it.id)) return `https://www.youtube.com/watch?v=${ytVid(it.id)}`;
+        return it.id;
+      }).join("\n");
+
+      $("newChIds").value = itemLines;
+    };
 
     window.removeChannel = function(idx) {
       if (state.channels.length <= 1) {
@@ -555,6 +590,7 @@
     };
 
     window.saveNewChannel = function() {
+      const editIdx = parseInt($("editingChIdx").value, 10);
       const name = $("newChName").value.trim();
       const desc = $("newChDesc").value.trim();
       const rawIds = $("newChIds").value.trim();
@@ -572,27 +608,34 @@
         } else if (line.includes("youtube.com/watch?v=")) {
           const urlParams = new URLSearchParams(line.split('?')[1]);
           id = "yt:" + urlParams.get('v');
+        } else if (line.includes("youtu.be/")) {
+          id = "yt:" + line.split("youtu.be/")[1].split("?")[0];
         } else if (line.length === 11 && !line.includes('.')) {
           id = "yt:" + line;
         }
         return { id: id, title: id };
       });
 
-      state.channels.push({
-        name: name,
-        description: desc,
-        color: "#38bdf8",
-        mode: "loop",
-        start: "07:00",
-        items: items
-      });
+      if (editIdx >= 0 && editIdx < state.channels.length) {
+        state.channels[editIdx].name = name;
+        state.channels[editIdx].description = desc;
+        state.channels[editIdx].items = items;
+      } else {
+        state.channels.push({
+          name: name,
+          description: desc,
+          color: "#38bdf8",
+          mode: "loop",
+          start: "07:00",
+          items: items
+        });
+      }
 
       saveChannelsStorage();
       closeChannelBuilder();
-      $("newChName").value = "";
-      $("newChDesc").value = "";
-      $("newChIds").value = "";
-      tuneChannel(state.channels.length - 1, 0);
+      
+      const targetIdx = editIdx >= 0 ? editIdx : state.channels.length - 1;
+      tuneChannel(targetIdx, 0);
     };
 
     window.openJsonManager = function() {
