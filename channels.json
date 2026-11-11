@@ -1,1 +1,9 @@
-
+[
+  {
+    "name": "Night Mind Tv",
+    "description": "User generated channel",
+    "color": "#38bdf8",
+    "mode": "loop",
+    "items": []
+  }
+]
