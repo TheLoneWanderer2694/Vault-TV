@@ -675,10 +675,11 @@
           };
 
           const startTimeStr = new Date(currentProgTime * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const endTimeStr = new Date(endTime * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           
           blockDiv.innerHTML = `
             <div class="flex items-center justify-between text-[10px] opacity-90 font-mono">
-              <span>${startTimeStr}</span>
+              <span>${startTimeStr} - ${endTimeStr}</span>
               ${isCurrentBlock ? '<span class="bg-black text-amber-300 px-1 rounded animate-pulse">LIVE</span>' : ''}
             </div>
             <div class="truncate text-xs font-bold ${isCurrentBlock ? 'text-black' : 'text-yellow-300'}" title="${item.title}">${item.title}</div>
@@ -942,6 +943,7 @@
       state.channels.forEach((ch, idx) => {
         const row = document.createElement("div");
         row.className = "flex items-center justify-between bg-zinc-950 p-2 rounded border border-zinc-800 text-xs";
+        row.id = `manage-row-${idx}`;
         row.innerHTML = `
           <div class="flex items-center space-x-2 truncate">
             <span class="w-3 h-3 rounded-full shrink-0" style="background-color: ${ch.color || '#38bdf8'}"></span>
@@ -949,12 +951,52 @@
           </div>
           <div class="flex items-center space-x-2 shrink-0">
             <button onclick="editChannel(${idx})" class="text-amber-400 hover:text-amber-300 px-1.5 py-0.5 rounded bg-amber-500/10">Edit</button>
-            <button onclick="removeChannel(${idx})" class="text-red-400 hover:text-red-300 px-1.5 py-0.5 rounded bg-red-500/10">Delete</button>
+            <button onclick="confirmRemoveChannel(${idx})" class="text-red-400 hover:text-red-300 px-1.5 py-0.5 rounded bg-red-500/10">Delete</button>
           </div>
         `;
         list.appendChild(row);
       });
     }
+
+    window.confirmRemoveChannel = function(idx) {
+      const row = $(`manage-row-${idx}`);
+      if (!row) return;
+      row.innerHTML = `
+        <span class="text-red-400 font-bold text-[11px]">Delete "${state.channels[idx]?.name}"?</span>
+        <div class="flex items-center space-x-1">
+          <button onclick="removeChannel(${idx})" class="bg-red-600 hover:bg-red-500 text-white px-2 py-0.5 rounded font-bold text-[10px]">Yes, Delete</button>
+          <button onclick="renderManageChannelsList()" class="bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded text-[10px]">Cancel</button>
+        </div>
+      `;
+    };
+
+    window.removeChannel = function(idx) {
+      if (idx >= 0 && idx < state.channels.length) {
+        state.channels.splice(idx, 1);
+        saveChannelsStorage();
+        renderManageChannelsList();
+        renderCableGuideGrid();
+
+        if (state.channels.length === 0) {
+          showNoChannelsState();
+        } else {
+          if (state.currentChannelIndex >= state.channels.length) {
+            state.currentChannelIndex = 0;
+          }
+          if (state.isPoweredOn) {
+            tuneChannel(state.currentChannelIndex);
+          }
+        }
+      }
+    };
+
+    window.resetChannelsToDefault = function() {
+      state.channels = [];
+      saveChannelsStorage();
+      renderManageChannelsList();
+      renderCableGuideGrid();
+      showNoChannelsState();
+    };
 
     window.openChannelBuilder = function() {
       $("editingChIdx").value = "-1";
