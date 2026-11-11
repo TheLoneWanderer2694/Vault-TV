@@ -154,9 +154,9 @@
         <div class="flex items-center space-x-3">
           <span class="text-3xl">📺</span>
           <div>
-            <h2 class="text-2xl font-bold tracking-widest vt323 text-amber-300">PREVUE CABLE TV GUIDE</h2>
-            <p class="text-xs text-blue-200">Horizontal Interactive Grid — Scroll horizontally & vertically</p>
-          </div>
+          <label class="block text-xs text-zinc-400 mb-1">Video Items, Titles & Duration (Title | Link or ID | HH:MM:SS)</label>
+          <textarea id="newChIds" rows="5" oninput="detectChannelNameFromInput()" placeholder="Saturday Morning Intro | yt:v9EdW9ADEZQ | 1:45:30&#10;https://www.youtube.com/playlist?list=PL386270CE323D4829&#10;X-Play Retro Special | https://www.youtube.com/watch?v=NAWOdnuDBBU | 2h 15m&#10;@G4TV" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-500"></textarea>
+        </div>
         </div>
         <div class="flex items-center space-x-4">
           <div class="text-right hidden sm:block">
@@ -970,7 +970,8 @@
       if (ch.items) {
         lines = ch.items.map(it => {
           const durDisplay = Math.floor((it.durationSec || parseDurationInSeconds(it.duration)) / 60) + ":" + String((it.durationSec || parseDurationInSeconds(it.duration)) % 60).padStart(2, '0');
-          return `${it.id}, ${durDisplay}`;
+          const titlePart = it.title ? `${it.title} | ` : '';
+          return `${titlePart}${it.id} | ${durDisplay}`;
         });
       }
       $("newChIds").value = lines.join("\n");
@@ -1026,9 +1027,37 @@
             }
           }
 
-          const parts = line.split(/[,|]/).map(p => p.trim());
-          let id = parts[0];
-          let durStr = parts[1] || "30:00";
+          const parts = line.split(/\|/).map(p => p.trim());
+          let id = "";
+          let customTitle = "";
+          let durStr = "30:00";
+
+          // Parse flexible formats: Title | ID/Link | Duration OR ID/Link | Duration OR Title | ID
+          if (parts.length >= 3) {
+            // Title | ID | Duration
+            customTitle = parts[0];
+            id = parts[1];
+            durStr = parts[2];
+          } else if (parts.length === 2) {
+            // Could be ID | Duration OR Title | ID
+            const secondIsDur = parseDurationInSeconds(parts[1]) !== 1800 || parts[1].includes(":") || parts[1].match(/\d+[hms]/i);
+            if (secondIsDur) {
+              id = parts[0];
+              durStr = parts[1];
+            } else {
+              customTitle = parts[0];
+              id = parts[1];
+            }
+          } else {
+            id = parts[0];
+          }
+
+          // Fallback comma splitting if pipe wasn't used
+          if (!id.includes("http") && !id.startsWith("yt:") && id.includes(",")) {
+            const subParts = id.split(",").map(p => p.trim());
+            id = subParts[0];
+            durStr = subParts[1] || durStr;
+          }
           
           if (id.includes("youtube.com/watch?v=")) {
             id = "yt:" + id.split("v=")[1].split("&")[0];
@@ -1039,11 +1068,11 @@
           }
 
           const durationSec = parseDurationInSeconds(durStr);
-          const title = isYT(id) ? `YouTube Video (${ytVid(id)})` : id;
+          const finalTitle = customTitle || (isYT(id) ? `YouTube Video (${ytVid(id)})` : id);
 
           items.push({
             id: id,
-            title: title,
+            title: finalTitle,
             durationSec: durationSec,
             duration: durationSec / 60
           });
