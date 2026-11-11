@@ -30,6 +30,13 @@
     .crt-vignette {
       box-shadow: inset 0 0 100px rgba(0,0,0,0.9), inset 0 0 30px rgba(0,0,0,0.8);
     }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col select-none">
@@ -69,7 +76,7 @@
           <!-- Scanline Overlay -->
           <div id="crtOverlay" class="absolute inset-0 crt z-20 pointer-events-none"></div>
 
-          <!-- Touch Unmute Banner for Android/Mobile Webkit -->
+          <!-- Touch Unmute Banner for Mobile Webkit -->
           <div id="androidUnmuteOverlay" onclick="handleAndroidTouchStart()" class="absolute inset-0 z-30 bg-black/60 backdrop-blur-xs hidden flex flex-col items-center justify-center p-4 cursor-pointer">
             <div class="bg-amber-500 text-black px-4 py-2 rounded-lg font-bold text-sm shadow-lg flex items-center space-x-2 animate-bounce">
               <span>🔊</span>
@@ -78,7 +85,7 @@
           </div>
 
           <!-- Video Elements -->
-          <video id="tvVideo" class="w-full h-full object-cover hidden" playsinline webkit-playsinline autoplay onended="onVideoEnded()"></video>
+          <video id="tvVideo" class="w-full h-full object-cover hidden" playsinline webkit-playsinline autoplay></video>
           <iframe id="tvIframe" class="w-full h-full border-0 hidden" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
 
           <!-- On-Screen Display (OSD) Banner -->
@@ -133,15 +140,15 @@
     </div>
 
     <!-- Right Sidebar: Channel Guide -->
-  <div class="w-full lg:w-80 bg-zinc-900 border-t lg:border-t-0 lg:border-l border-zinc-800 flex flex-col h-72 lg:h-auto">
-    <div class="p-3 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between">
-      <span class="text-xs font-bold uppercase tracking-wider text-amber-400 vt323 text-base">Channel Selector</span>
-      <span id="currentTimeDisplay" class="text-xs font-mono text-amber-400">00:00:00</span>
+    <div class="w-full lg:w-80 bg-zinc-900 border-t lg:border-t-0 lg:border-l border-zinc-800 flex flex-col h-72 lg:h-auto">
+      <div class="p-3 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-amber-400 vt323 text-base">Channel Selector</span>
+        <span id="currentTimeDisplay" class="text-xs font-mono text-amber-400">00:00:00</span>
+      </div>
+      <div id="sideChannelList" class="flex-1 overflow-y-auto divide-y divide-zinc-800/60 p-2 space-y-1">
+        <!-- Rendered dynamically -->
+      </div>
     </div>
-    <div id="sideChannelList" class="flex-1 overflow-y-auto divide-y divide-zinc-800/60 p-2 space-y-1">
-      <!-- Rendered dynamically -->
-    </div>
-  </div>
 
   </div>
 
@@ -329,7 +336,8 @@
       crtEnabled: true,
       theaterMode: false,
       userInteracted: false,
-      forceIframeEngine: false
+      forceIframeEngine: false,
+      osdTimeout: null
     };
 
     function $(id) { return document.getElementById(id); }
@@ -344,6 +352,31 @@
 
     function ytVid(id) {
       return id.replace("yt:", "");
+    }
+
+    function parseDurationInSeconds(dur) {
+      if (!dur) return 1800;
+      if (typeof dur === 'number') return dur > 300 ? dur : dur * 60;
+      const str = String(dur).trim();
+      
+      const hMatch = str.match(/(\d+)\s*h/i);
+      const mMatch = str.match(/(\d+)\s*m/i);
+      const sMatch = str.match(/(\d+)\s*s/i);
+      if (hMatch || mMatch || sMatch) {
+        let sec = 0;
+        if (hMatch) sec += parseInt(hMatch[1], 10) * 3600;
+        if (mMatch) sec += parseInt(mMatch[1], 10) * 60;
+        if (sMatch) sec += parseInt(sMatch[1], 10);
+        return sec;
+      }
+
+      const parts = str.split(':').map(p => parseInt(p, 10));
+      if (parts.some(isNaN)) return 1800;
+      if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      if (parts.length === 2) return parts[0] * 60 + parts[1];
+      if (parts.length === 1) return parts[0] > 300 ? parts[0] : parts[0] * 60;
+      
+      return 1800;
     }
 
     function tuneChannel(chIdx, itemIdx = 0) {
@@ -372,7 +405,6 @@
       const ch = state.channels[state.currentChannelIndex];
       if (!ch || !ch.items || ch.items.length === 0) return;
 
-      // Real-time synchronization calculation
       const nowSeconds = Math.floor(Date.now() / 1000);
       const itemDurations = ch.items.map(it => it.durationSec || parseDurationInSeconds(it.duration));
       const totalLoopSec = itemDurations.reduce((a, b) => a + b, 0) || 1800;
@@ -403,7 +435,6 @@
         vid.classList.add("hidden");
         
         const yId = isYT(item.id) ? ytVid(item.id) : item.id;
-        // Include start parameter in YouTube embed for exact time sync
         const embedUrl = isYT(item.id) 
           ? `https://www.youtube.com/embed/${yId}?autoplay=1&controls=1&enablejsapi=1&rel=0&start=${startOffsetSec}`
           : ARCHIVE_EMBED(item.id);
@@ -427,6 +458,16 @@
       }
     }
 
+    function onVideoEnded() {
+      if (!state.channels || state.channels.length === 0) return;
+      const ch = state.channels[state.currentChannelIndex];
+      if (!ch || !ch.items || ch.items.length === 0) return;
+
+      state.currentItemIndex = (state.currentItemIndex + 1) % ch.items.length;
+      playCurrentItemWithTimeSync();
+      triggerOSD();
+    }
+
     async function fetchPlaylistVideosFromUrl(urlStr) {
       let listId = "";
       if (urlStr.includes("list=")) {
@@ -435,8 +476,7 @@
       if (!listId) return [];
 
       const proxies = [
-        `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(`https://www.youtube.com/feeds/videos.xml?playlist_id=${listId}`)}`,
-        `https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.youtube.com/feeds/videos.xml?playlist_id=${listId}`)}`
+        `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(`https://www.youtube.com/feeds/videos.xml?playlist_id=${listId}`)}`
       ];
 
       for (const proxy of proxies) {
@@ -490,17 +530,6 @@
         }
       } catch(e) {}
       return [];
-    }
-
-    async function fetchYouTubeVideoTitle(vId) {
-      try {
-        const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${vId}&format=json`);
-        if (res.ok) {
-          const contents = await res.json();
-          if (contents && contents.title) return contents.title;
-        }
-      } catch (e) {}
-      return `YouTube Video (${vId})`;
     }
 
     function loadChannels() {
@@ -568,180 +597,61 @@
       if (pEl) pEl.innerText = str;
     }
 
-    window.onload = function() {
-      loadChannels();
-      setInterval(updateClock, 1000);
-      updateClock();
-    };
-
     function renderCableGuideGrid() {
       const grid = $("prevueGridContent");
-      const timeSlotsHeader = $("prevueTimeSlots");
-      if (!grid || !timeSlotsHeader) return;
-      grid.innerHTML = "";
-      timeSlotsHeader.innerHTML = "";
-
-      if (!state.channels || state.channels.length === 0) {
-        grid.innerHTML = `<div class="p-8 text-center text-blue-300 font-mono">No channels registered in the cable guide lineup.</div>`;
-        return;
-      }
+      const headers = $("prevueTimeSlots");
+      if (!grid || !headers) return;
 
       const now = new Date();
-      const currentSeconds = Math.floor(now.getTime() / 1000);
+      const timeBlocks = [];
+      let baseTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), Math.floor(now.getMinutes() / 30) * 30, 0);
 
-      // Generate 8 30-minute time slots for the horizontal grid header (4 hours total)
-      const slotTimes = [];
-      let baseSlotTime = new Date(Math.floor(currentSeconds / 1800) * 1800 * 1000);
-      for (let s = 0; s < 8; s++) {
-        const slotTimeStr = baseSlotTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        slotTimes.push(baseSlotTime.getTime() / 1000);
-        
-        const timeDiv = document.createElement("div");
-        timeDiv.className = "w-64 shrink-0 text-center py-1 border-r border-blue-700 text-yellow-300 font-mono text-xs";
-        timeDiv.innerText = slotTimeStr;
-        timeSlotsHeader.appendChild(timeDiv);
+      headers.innerHTML = "";
+      for (let i = 0; i < 6; i++) {
+        const slotTime = new Date(baseTime.getTime() + i * 30 * 60000);
+        const timeStr = slotTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        timeBlocks.push(slotTime);
+        headers.innerHTML += `<div class="w-48 shrink-0 p-2 border-r border-blue-700 text-center font-mono">${timeStr}</div>`;
+      }
 
-        baseSlotTime.setMinutes(baseSlotTime.getMinutes() + 30);
+      grid.innerHTML = "";
+      if (!state.channels || state.channels.length === 0) {
+        grid.innerHTML = `<div class="p-6 text-center text-blue-300 font-mono">No channels available. Create a channel to generate schedule guide.</div>`;
+        return;
       }
 
       state.channels.forEach((ch, idx) => {
-        const isActive = state.isPoweredOn && state.currentChannelIndex === idx;
-        const itemDurations = (ch.items || []).map(item => item.durationSec || parseDurationInSeconds(item.duration));
-        const totalChannelDuration = itemDurations.reduce((acc, curr) => acc + curr, 0) || 1800;
-        let relativeSeconds = currentSeconds % totalChannelDuration;
+        const row = document.createElement("div");
+        row.className = "flex items-stretch bg-blue-900/60 border border-blue-800 rounded overflow-hidden min-w-max";
 
-        let nowIdx = 0;
-        let elapsedInItem = relativeSeconds;
-        let nowItemStartSeconds = currentSeconds - elapsedInItem;
-
-        for (let i = 0; i < itemDurations.length; i++) {
-          if (elapsedInItem < itemDurations[i]) {
-            nowIdx = i;
-            break;
-          }
-          elapsedInItem -= itemDurations[i];
+        let progSlotsHtml = "";
+        if (ch.items && ch.items.length > 0) {
+          ch.items.slice(0, 6).forEach((item, pIdx) => {
+            const startTimeStr = new Date(baseTime.getTime() + pIdx * 30 * 60000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+            const endTimeStr = new Date(baseTime.getTime() + (pIdx + 1) * 30 * 60000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+            progSlotsHtml += `
+              <div onclick="tuneChannel(${idx}, ${pIdx}); toggleCableGuideModal();" class="w-48 shrink-0 p-2 border-r border-blue-800 hover:bg-blue-800/80 cursor-pointer transition flex flex-col justify-between">
+                <div class="text-[10px] text-amber-300 font-bold">${startTimeStr} - ${endTimeStr}</div>
+                <div class="font-bold text-xs text-white truncate">${item.title || item.id}</div>
+              </div>
+            `;
+          });
+        } else {
+          progSlotsHtml = `<div class="p-2 text-blue-300 text-xs italic">Regular Programming</div>`;
         }
 
-        const row = document.createElement("div");
-        row.className = `flex items-center bg-blue-900/40 border border-blue-800 rounded-lg overflow-hidden min-h-[70px] ${
-          isActive ? "border-amber-400 bg-amber-500/10 shadow-lg" : "hover:bg-blue-800/40"
-        }`;
-
-        // Channel Station Badge Column (Sticky Left)
-        const stationCol = document.createElement("div");
-        stationCol.className = "w-40 shrink-0 p-3 bg-blue-950 border-r border-blue-800 flex items-center space-x-3 cursor-pointer select-none";
-        stationCol.onclick = () => {
-          tuneChannel(idx, nowIdx);
-          toggleCableGuideModal();
-        };
-        stationCol.innerHTML = `
-          <span class="font-bold text-sm px-2 py-1 rounded text-black shrink-0 vt323" style="background-color: ${ch.color || '#38bdf8'}">CH ${(idx + 1).toString().padStart(2, '0')}</span>
-          <div class="truncate">
-            <div class="font-bold text-xs text-amber-300 truncate">${ch.name}</div>
-            <div class="text-[10px] text-blue-300 uppercase">${ch.callSign || 'CABLE'}</div>
+        row.innerHTML = `
+          <div onclick="tuneChannel(${idx}); toggleCableGuideModal();" class="w-40 shrink-0 p-2.5 bg-blue-950 border-r border-blue-700 cursor-pointer hover:bg-blue-900 flex items-center space-x-2">
+            <span class="font-bold text-xs px-2 py-0.5 rounded text-black shrink-0" style="background-color: ${ch.color || '#38bdf8'}">CH ${(idx + 1).toString().padStart(2, '0')}</span>
+            <span class="font-bold text-xs text-yellow-300 truncate">${ch.name}</span>
+          </div>
+          <div class="flex flex-1">
+            ${progSlotsHtml}
           </div>
         `;
-        row.appendChild(stationCol);
-
-        // Horizontal Program Blocks Container
-        const blocksContainer = document.createElement("div");
-        blocksContainer.className = "flex flex-1 overflow-x-auto no-scrollbar items-center space-x-1 p-1";
-
-        let currentProgTime = nowItemStartSeconds;
-        let progIdx = nowIdx;
-
-        // Sequence consecutive video items directly next to each other
-        for (let b = 0; b < ch.items.length * 2; b++) {
-          const item = ch.items[progIdx] || { title: "Program Schedule" };
-          const durSec = itemDurations[progIdx] || 1800;
-          const endTime = currentProgTime + durSec;
-
-          const blockDiv = document.createElement("div");
-          // Calculate proportional width (approx 160px per 30 mins)
-          const pxWidth = Math.max(120, Math.round((durSec / 1800) * 256));
-          blockDiv.style.width = `${pxWidth}px`;
-          
-          const isCurrentBlock = b === 0;
-          blockDiv.className = `shrink-0 p-2.5 rounded border transition cursor-pointer flex flex-col justify-between h-14 ${
-            isCurrentBlock 
-              ? "bg-amber-600/90 border-amber-300 text-black font-bold shadow" 
-              : "bg-blue-950/80 border-blue-800 text-blue-200 hover:bg-blue-900"
-          }`;
-          
-          const targetIdx = progIdx;
-          blockDiv.onclick = () => {
-            tuneChannel(idx, targetIdx);
-            toggleCableGuideModal();
-          };
-
-          const startTimeStr = new Date(currentProgTime * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          const endTimeStr = new Date(endTime * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          
-          blockDiv.innerHTML = `
-            <div class="flex items-center justify-between text-[10px] opacity-90 font-mono">
-              <span>${startTimeStr} - ${endTimeStr}</span>
-              ${isCurrentBlock ? '<span class="bg-black text-amber-300 px-1 rounded animate-pulse">LIVE</span>' : ''}
-            </div>
-            <div class="truncate text-xs font-bold ${isCurrentBlock ? 'text-black' : 'text-yellow-300'}" title="${item.title}">${item.title}</div>
-          `;
-
-          blocksContainer.appendChild(blockDiv);
-
-          currentProgTime = endTime;
-          progIdx = (progIdx + 1) % ch.items.length;
-        }
-
-        row.appendChild(blocksContainer);
         grid.appendChild(row);
       });
     }
-
-    async function detectChannelNameFromInput() {
-      const textarea = $("newChIds");
-      const nameInput = $("newChName");
-      const notice = $("autoNameNotice");
-      if (!textarea || !nameInput) return;
-
-      const text = textarea.value.trim();
-      if (!text) {
-        if (notice) notice.innerText = "";
-        return;
-      }
-
-      const firstLine = text.split("\n")[0].trim();
-      
-      // If user pasted a YouTube playlist or channel or video link, try auto-fetching title
-      if (firstLine.includes("playlist?list=") || firstLine.includes("watch?v=") || firstLine.startsWith("@") || firstLine.length === 11) {
-        if (notice) notice.innerText = "⏳ Detecting title...";
-        
-        let sampleId = firstLine;
-        if (firstLine.includes("watch?v=")) sampleId = firstLine.split("v=")[1].split("&")[0];
-        else if (firstLine.includes("youtu.be/")) sampleId = firstLine.split("youtu.be/")[1].split("?")[0];
-        else if (firstLine.startsWith("@")) {
-          nameInput.value = firstLine.replace("@", "").toUpperCase() + " TV";
-          if (notice) notice.innerText = "✓ Auto-named from channel";
-          return;
-        }
-
-        if (sampleId.length === 11) {
-          const title = await fetchYouTubeVideoTitle(sampleId);
-          if (title && !nameInput.value) {
-            // Simplify title for channel name
-            const cleanTitle = title.split(/[-|–:]/)[0].trim();
-            nameInput.value = cleanTitle;
-            if (notice) notice.innerText = "✓ Auto-named";
-          } else {
-            if (notice) notice.innerText = "";
-          }
-        }
-      }
-    }
-
-    window.togglePlayerEngine = function() {
-      state.forceIframeEngine = !state.forceIframeEngine;
-      playCurrentItemWithTimeSync();
-      triggerOSD();
-    };
 
     window.toggleCableGuideModal = function() {
       const modal = $("prevueGuideModal");
@@ -754,33 +664,6 @@
         modal.classList.add("hidden");
       }
     };
-
-    function parseDurationInSeconds(dur) {
-      if (!dur) return 1800;
-      if (typeof dur === 'number') return dur > 300 ? dur : dur * 60;
-      const str = String(dur).trim();
-      
-      // Match 1h30m or 1h 30m or 45m
-      const hMatch = str.match(/(\d+)\s*h/i);
-      const mMatch = str.match(/(\d+)\s*m/i);
-      const sMatch = str.match(/(\d+)\s*s/i);
-      if (hMatch || mMatch || sMatch) {
-        let sec = 0;
-        if (hMatch) sec += parseInt(hMatch[1], 10) * 3600;
-        if (mMatch) sec += parseInt(mMatch[1], 10) * 60;
-        if (sMatch) sec += parseInt(sMatch[1], 10);
-        return sec;
-      }
-
-      // Match HH:MM:SS or MM:SS
-      const parts = str.split(':').map(p => parseInt(p, 10));
-      if (parts.some(isNaN)) return 1800;
-      if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-      if (parts.length === 2) return parts[0] * 60 + parts[1];
-      if (parts.length === 1) return parts[0] > 300 ? parts[0] : parts[0] * 60;
-      
-      return 1800;
-    }
 
     function triggerOSD() {
       const banner = $("osdBanner");
@@ -847,17 +730,6 @@
           }
         }
       }
-    };
-
-    window.onVideoEnded = function() {
-      if (!state.channels || state.channels.length === 0) return;
-      const ch = state.channels[state.currentChannelIndex];
-      if (!ch || !ch.items || ch.items.length === 0) return;
-
-      state.currentItemIndex = (state.currentItemIndex + 1) % ch.items.length;
-      state.currentItemStartTime = Date.now();
-      playCurrentItemWithTimeSync();
-      triggerOSD();
     };
 
     window.adjustVolume = function(val) {
@@ -1041,21 +913,7 @@
         });
       }
       $("newChIds").value = lines.join("\n");
-    };
-
-    window.removeChannel = function(idx) {
-      if (confirm(`Are you sure you want to delete "${state.channels[idx]?.name}"?`)) {
-        state.channels.splice(idx, 1);
-        saveChannelsStorage();
-        if (state.channels.length === 0) {
-          showNoChannelsState();
-        } else {
-          if (state.currentChannelIndex >= state.channels.length) {
-            state.currentChannelIndex = 0;
-          }
-          if (state.isPoweredOn) tuneChannel(state.currentChannelIndex);
-        }
-      }
+      $("builderModal").classList.remove("hidden");
     };
 
     window.saveNewChannel = async function() {
@@ -1098,14 +956,11 @@
           let customTitle = "";
           let durStr = "30:00";
 
-          // Parse flexible formats: Title | ID/Link | Duration OR ID/Link | Duration OR Title | ID
           if (parts.length >= 3) {
-            // Title | ID | Duration
             customTitle = parts[0];
             id = parts[1];
             durStr = parts[2];
           } else if (parts.length === 2) {
-            // Could be ID | Duration OR Title | ID
             const secondIsDur = parseDurationInSeconds(parts[1]) !== 1800 || parts[1].includes(":") || parts[1].match(/\d+[hms]/i);
             if (secondIsDur) {
               id = parts[0];
@@ -1118,7 +973,6 @@
             id = parts[0];
           }
 
-          // Fallback comma splitting if pipe wasn't used
           if (!id.includes("http") && !id.startsWith("yt:") && id.includes(",")) {
             const subParts = id.split(",").map(p => p.trim());
             id = subParts[0];
@@ -1224,7 +1078,6 @@
         const url = `https://api.github.com/repos/${repo}/contents/channels.json`;
         let sha = "";
 
-        // Check if channels.json exists to get sha
         const getRes = await fetch(url, {
           headers: { Authorization: `token ${token}` }
         });
@@ -1257,6 +1110,17 @@
         }
       } catch(e) {
         alert("GitHub Sync Error: " + e.message);
+      }
+    };
+
+    window.onload = function() {
+      loadChannels();
+      setInterval(updateClock, 1000);
+      updateClock();
+
+      const vid = $("tvVideo");
+      if (vid) {
+        vid.addEventListener('ended', onVideoEnded);
       }
     };
   </script>
