@@ -154,9 +154,9 @@
         <div class="flex items-center space-x-3">
           <span class="text-3xl">📺</span>
           <div>
-          <label class="block text-xs text-zinc-400 mb-1">Video Items, Titles & Duration (Title | Link or ID | HH:MM:SS)</label>
-          <textarea id="newChIds" rows="5" oninput="detectChannelNameFromInput()" placeholder="Saturday Morning Intro | yt:v9EdW9ADEZQ | 1:45:30&#10;https://www.youtube.com/playlist?list=PL386270CE323D4829&#10;X-Play Retro Special | https://www.youtube.com/watch?v=NAWOdnuDBBU | 2h 15m&#10;@G4TV" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-500"></textarea>
-        </div>
+            <h2 class="text-2xl font-bold tracking-wider text-amber-400 vt323 uppercase">PREVUE CABLE GUIDE</h2>
+            <p class="text-xs text-blue-300 font-mono">Interactive Channel Lineup & Schedule Grid</p>
+          </div>
         </div>
         <div class="flex items-center space-x-4">
           <div class="text-right hidden sm:block">
@@ -372,7 +372,27 @@
       const ch = state.channels[state.currentChannelIndex];
       if (!ch || !ch.items || ch.items.length === 0) return;
 
-      const item = ch.items[state.currentItemIndex] || ch.items[0];
+      // Real-time synchronization calculation
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      const itemDurations = ch.items.map(it => it.durationSec || parseDurationInSeconds(it.duration));
+      const totalLoopSec = itemDurations.reduce((a, b) => a + b, 0) || 1800;
+
+      let cycleOffset = nowSeconds % totalLoopSec;
+      let targetIdx = 0;
+      let startOffsetSec = 0;
+
+      for (let i = 0; i < itemDurations.length; i++) {
+        if (cycleOffset < itemDurations[i]) {
+          targetIdx = i;
+          startOffsetSec = Math.floor(cycleOffset);
+          break;
+        }
+        cycleOffset -= itemDurations[i];
+      }
+
+      state.currentItemIndex = targetIdx;
+      const item = ch.items[targetIdx] || ch.items[0];
+
       const vid = $("tvVideo");
       const iframe = $("tvIframe");
 
@@ -383,8 +403,9 @@
         vid.classList.add("hidden");
         
         const yId = isYT(item.id) ? ytVid(item.id) : item.id;
+        // Include start parameter in YouTube embed for exact time sync
         const embedUrl = isYT(item.id) 
-          ? `https://www.youtube.com/embed/${yId}?autoplay=1&controls=1&enablejsapi=1&rel=0`
+          ? `https://www.youtube.com/embed/${yId}?autoplay=1&controls=1&enablejsapi=1&rel=0&start=${startOffsetSec}`
           : ARCHIVE_EMBED(item.id);
 
         iframe.src = embedUrl;
@@ -395,6 +416,7 @@
 
         const directUrl = `https://archive.org/download/${item.id}/${item.id}.mp4`;
         vid.src = directUrl;
+        vid.currentTime = startOffsetSec;
         vid.volume = state.volume;
         vid.classList.remove("hidden");
         vid.play().catch(e => {
@@ -628,25 +650,27 @@
         let currentProgTime = nowItemStartSeconds;
         let progIdx = nowIdx;
 
-        // Populate blocks across the timeline slots
-        for (let b = 0; b < 12; b++) {
+        // Sequence consecutive video items directly next to each other
+        for (let b = 0; b < ch.items.length * 2; b++) {
           const item = ch.items[progIdx] || { title: "Program Schedule" };
           const durSec = itemDurations[progIdx] || 1800;
           const endTime = currentProgTime + durSec;
 
           const blockDiv = document.createElement("div");
-          // Calculate width relative to duration (approx 60px per 5 minutes or fixed min-w)
-          const widthClass = durSec <= 900 ? "w-40" : (durSec <= 1800 ? "w-64" : (durSec <= 3600 ? "w-96" : "w-[500px]"));
+          // Calculate proportional width (approx 160px per 30 mins)
+          const pxWidth = Math.max(120, Math.round((durSec / 1800) * 256));
+          blockDiv.style.width = `${pxWidth}px`;
           
           const isCurrentBlock = b === 0;
-          blockDiv.className = `${widthClass} shrink-0 p-2.5 rounded border transition cursor-pointer flex flex-col justify-between h-14 ${
+          blockDiv.className = `shrink-0 p-2.5 rounded border transition cursor-pointer flex flex-col justify-between h-14 ${
             isCurrentBlock 
               ? "bg-amber-600/90 border-amber-300 text-black font-bold shadow" 
               : "bg-blue-950/80 border-blue-800 text-blue-200 hover:bg-blue-900"
           }`;
           
+          const targetIdx = progIdx;
           blockDiv.onclick = () => {
-            tuneChannel(idx, progIdx);
+            tuneChannel(idx, targetIdx);
             toggleCableGuideModal();
           };
 
