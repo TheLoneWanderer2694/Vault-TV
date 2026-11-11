@@ -146,7 +146,7 @@
   </div>
 
   <!-- Retro Cable Channel Guide Modal (Prevue / TV Guide Style) -->
-  <div id="prevueGuideModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex flex-col p-2 sm:p-6 overflow-hidden">
+  <div id="prevueGuideModal" class="fixed inset-0 bg-black/95 backdrop-blur-md z-50 hidden flex flex-col p-2 sm:p-6 overflow-hidden">
     <div class="bg-blue-950 border-4 border-blue-600 rounded-xl flex-1 flex flex-col shadow-2xl overflow-hidden font-mono">
       
       <!-- Top Cable Guide Header Bar -->
@@ -155,34 +155,35 @@
           <span class="text-3xl">📺</span>
           <div>
             <h2 class="text-2xl font-bold tracking-widest vt323 text-amber-300">PREVUE CABLE TV GUIDE</h2>
-            <p class="text-xs text-blue-200">Interactive Lineup & Synchronized Broadcast Schedule</p>
+            <p class="text-xs text-blue-200">Horizontal Interactive Grid — Scroll horizontally & vertically</p>
           </div>
         </div>
         <div class="flex items-center space-x-4">
           <div class="text-right hidden sm:block">
             <div id="prevueClock" class="text-xl font-bold vt323 text-yellow-300">12:00:00 PM</div>
-            <div class="text-xs text-blue-300 uppercase">Interactive Cable</div>
+            <div class="text-xs text-blue-300 uppercase">Live Broadcast Time</div>
           </div>
           <button onclick="toggleCableGuideModal()" class="bg-red-600 hover:bg-red-500 text-white font-bold px-3 py-1.5 rounded border border-red-400 text-sm">CLOSE GUIDE ✕</button>
         </div>
       </div>
 
-      <!-- Time Header Row -->
-      <div id="prevueTimeHeader" class="bg-blue-900 text-yellow-300 font-bold text-xs uppercase px-4 py-2 border-b border-blue-700 grid grid-cols-12 gap-2 text-center shadow-inner">
-        <div class="col-span-3 sm:col-span-2 text-left text-blue-200 font-mono">CH / STATION</div>
-        <div id="timeCol1" class="col-span-9 sm:col-span-4 bg-blue-950/60 rounded py-0.5 border border-blue-700/50">NOW PLAYING</div>
-        <div id="timeCol2" class="hidden sm:block sm:col-span-6 bg-blue-950/60 rounded py-0.5 border border-blue-700/50">UPCOMING LINEUP</div>
+      <!-- Horizontal Time Header Strip -->
+      <div class="bg-blue-900 border-b-2 border-blue-700 flex overflow-x-auto no-scrollbar text-yellow-300 font-bold text-xs">
+        <div class="w-40 shrink-0 p-2.5 bg-blue-950 border-r border-blue-700 font-mono text-blue-200 flex items-center justify-center">CH / STATION</div>
+        <div id="prevueTimeSlots" class="flex flex-1 min-w-max">
+          <!-- Rendered dynamically with 30-min time blocks -->
+        </div>
       </div>
 
       <!-- Scrollable Cable Grid Content -->
-      <div id="prevueGridContent" class="flex-1 overflow-y-auto divide-y divide-blue-800/80 bg-blue-950 p-2 space-y-2">
-        <!-- Dynamic Cable Rows Rendered Here -->
+      <div id="prevueGridContent" class="flex-1 overflow-auto bg-blue-950 p-2 space-y-2">
+        <!-- Dynamic Horizontal Channel Grid Rows -->
       </div>
 
       <!-- Footer Ticker -->
       <div class="bg-blue-900 border-t-2 border-amber-400 p-2 flex items-center space-x-3 text-amber-300 text-xs overflow-hidden">
         <span class="bg-amber-500 text-black font-bold px-2 py-0.5 rounded text-[10px] uppercase">TV GUIDE</span>
-        <marquee class="font-mono text-sm tracking-wide text-yellow-200">Welcome to Archive Cable TV • Click any channel row to tune in immediately • Synchronized live broadcast grid</marquee>
+        <marquee class="font-mono text-sm tracking-wide text-yellow-200">Use horizontal scroll to view upcoming schedules • Click any program block to tune in instantly</marquee>
       </div>
 
     </div>
@@ -197,17 +198,16 @@
       </div>
       
       <div class="space-y-4">
-        <!-- Hidden input to track channel index when editing -->
         <input type="hidden" id="editingChIdx" value="-1">
 
         <div>
-          <label class="block text-xs text-zinc-400 mb-1">Channel Name</label>
+          <label class="block text-xs text-zinc-400 mb-1">Channel Name <span id="autoNameNotice" class="text-amber-400 text-[10px] ml-1"></span></label>
           <input type="text" id="newChName" placeholder="e.g. Retro Cartoons, Action Network" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-bold focus:outline-none focus:border-amber-500">
         </div>
 
         <div>
           <label class="block text-xs text-zinc-400 mb-1">Video Items & Duration (HH:MM:SS, MM:SS, or 1h30m)</label>
-          <textarea id="newChIds" rows="5" placeholder="yt:v9EdW9ADEZQ, 1:45:30&#10;https://www.youtube.com/playlist?list=PL386270CE323D4829&#10;https://www.youtube.com/watch?v=NAWOdnuDBBU | 2h 15m&#10;@G4TV&#10;X-Play.2011.04.19, 01:30:00" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-500"></textarea>
+          <textarea id="newChIds" rows="5" oninput="detectChannelNameFromInput()" placeholder="yt:v9EdW9ADEZQ, 1:45:30&#10;https://www.youtube.com/playlist?list=PL386270CE323D4829&#10;https://www.youtube.com/watch?v=NAWOdnuDBBU | 2h 15m&#10;@G4TV" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-500"></textarea>
         </div>
 
         <div>
@@ -529,70 +529,72 @@
       return `YouTube Video (${vId})`;
     }
 
-function updateClock() {
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString();
-  const sideClock = $("currentTimeDisplay");
-  const prevueClock = $("prevueClock");
-  if (sideClock) sideClock.innerText = timeStr;
-  if (prevueClock) prevueClock.innerText = timeStr;
-}
+    function loadChannels() {
+      const clearedFlag = localStorage.getItem("archive_tv_channels_cleared");
+      const saved = localStorage.getItem("archive_tv_channels");
 
-window.onload = function() {
-  loadChannels();
-  setInterval(updateClock, 1000);
-  updateClock();
-  
-  const savedRepo = localStorage.getItem("archive_tv_gh_repo");
-      const savedToken = localStorage.getItem("archive_tv_gh_token");
-      if (savedRepo && $("ghRepo")) $("ghRepo").value = savedRepo;
-      if (savedToken && $("ghToken")) $("ghToken").value = savedToken;
-
-      const vid = $("tvVideo");
-      if (vid) {
-        vid.addEventListener('ended', window.onVideoEnded);
+      if (clearedFlag === "true" || saved === "[]") {
+        state.channels = [];
+        showNoChannelsState();
+        return;
       }
 
-      // Polling timer to catch video endings even if iframe postMessage is blocked
-      setInterval(checkVideoEndProgress, 1000);
-
-      // Handle message events from YouTube iframe or embedded Archive players
-      window.addEventListener('message', function(event) {
-        if (!event.data) return;
+      if (saved) {
         try {
-          const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-          // YouTube API state 0 = ENDED
-          if (data.event === 'onStateChange' && data.info === 0) {
-            window.onVideoEnded();
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            state.channels = parsed;
+            renderSideChannelList();
+            return;
           }
-        } catch(e) {}
-      });
+        } catch (e) {}
+      }
 
-      document.body.addEventListener('touchstart', function() {
-        if (!state.userInteracted) {
-          state.userInteracted = true;
-          const overlay = $("androidUnmuteOverlay");
-          if (overlay) overlay.classList.add("hidden");
-        }
-      }, { once: true });
-    };
-
-    window.toggleCableGuideModal = function() {
-      const modal = $("prevueGuideModal");
-      if (!modal) return;
-      const isHidden = modal.classList.contains("hidden");
-      if (isHidden) {
-        renderCableGuideGrid();
-        modal.classList.remove("hidden");
+      state.channels = DEFAULT_CHANNELS;
+      if (state.channels.length === 0) {
+        showNoChannelsState();
       } else {
-        modal.classList.add("hidden");
+        renderSideChannelList();
+      }
+    }
+
+    function saveChannelsStorage() {
+      localStorage.setItem("archive_tv_channels", JSON.stringify(state.channels));
+      if (state.channels.length === 0) {
+        localStorage.setItem("archive_tv_channels_cleared", "true");
+      } else {
+        localStorage.removeItem("archive_tv_channels_cleared");
+      }
+      renderSideChannelList();
+    }
+
+    function showNoChannelsState() {
+      const splash = $("splashScreen");
+      if (splash) {
+        splash.classList.remove("hidden");
+        const splashTitle = $("splashTitle");
+        const splashDesc = $("splashDesc");
+        const splashBtn = $("splashBtn");
+        if (splashTitle) splashTitle.innerText = "NO CHANNELS FOUND";
+        if (splashDesc) splashDesc.innerText = "Click '＋ New Channel' above to create your custom broadcast lineup.";
+        if (splashBtn) {
+          splashBtn.innerText = "＋ Create First Channel";
+          splashBtn.onclick = openChannelBuilder;
+        }
+      }
+      renderSideChannelList();
+    }
+
+    function updateClock() {
       }
     };
 
     function renderCableGuideGrid() {
       const grid = $("prevueGridContent");
-      if (!grid) return;
+      const timeSlotsHeader = $("prevueTimeSlots");
+      if (!grid || !timeSlotsHeader) return;
       grid.innerHTML = "";
+      timeSlotsHeader.innerHTML = "";
 
       if (!state.channels || state.channels.length === 0) {
         grid.innerHTML = `<div class="p-8 text-center text-blue-300 font-mono">No channels registered in the cable guide lineup.</div>`;
@@ -602,13 +604,25 @@ window.onload = function() {
       const now = new Date();
       const currentSeconds = Math.floor(now.getTime() / 1000);
 
+      // Generate 8 30-minute time slots for the horizontal grid header (4 hours total)
+      const slotTimes = [];
+      let baseSlotTime = new Date(Math.floor(currentSeconds / 1800) * 1800 * 1000);
+      for (let s = 0; s < 8; s++) {
+        const slotTimeStr = baseSlotTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        slotTimes.push(baseSlotTime.getTime() / 1000);
+        
+        const timeDiv = document.createElement("div");
+        timeDiv.className = "w-64 shrink-0 text-center py-1 border-r border-blue-700 text-yellow-300 font-mono text-xs";
+        timeDiv.innerText = slotTimeStr;
+        timeSlotsHeader.appendChild(timeDiv);
+
+        baseSlotTime.setMinutes(baseSlotTime.getMinutes() + 30);
+      }
+
       state.channels.forEach((ch, idx) => {
         const isActive = state.isPoweredOn && state.currentChannelIndex === idx;
-
         const itemDurations = (ch.items || []).map(item => item.durationSec || parseDurationInSeconds(item.duration));
         const totalChannelDuration = itemDurations.reduce((acc, curr) => acc + curr, 0) || 1800;
-        
-        // Compute continuous loop offset relative to unix epoch time
         let relativeSeconds = currentSeconds % totalChannelDuration;
 
         let nowIdx = 0;
@@ -623,284 +637,113 @@ window.onload = function() {
           elapsedInItem -= itemDurations[i];
         }
 
-        const nowItem = ch.items[nowIdx] || { title: "Scheduled Program" };
-        const nowDuration = itemDurations[nowIdx] || 1800;
-
-        function formatTimeFromUnix(unixSec) {
-          const date = new Date(unixSec * 1000);
-          return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        }
-
-        const nowTimeStr = formatTimeFromUnix(nowItemStartSeconds);
-
-        // Build array of all upcoming items in sequence with their start times
-        let upcomingHTML = "";
-        let cumulativeSec = nowItemStartSeconds + nowDuration;
-        const totalItems = ch.items.length || 1;
-
-        for (let step = 1; step < totalItems; step++) {
-          const upIdx = (nowIdx + step) % totalItems;
-          const upItem = ch.items[upIdx] || { title: "Upcoming Program" };
-          const upDur = itemDurations[upIdx] || 1800;
-          const upTimeStr = formatTimeFromUnix(cumulativeSec);
-          cumulativeSec += upDur;
-
-          upcomingHTML += `
-            <div class="flex items-center space-x-2 text-[11px] text-blue-200 font-bold border-b border-blue-800/40 pb-1 last:border-b-0 last:pb-0">
-              <span class="bg-blue-950 px-1.5 py-0.5 rounded border border-blue-800/60 text-yellow-300 text-[10px] shrink-0 font-mono">${upTimeStr}</span>
-              <span class="truncate" title="${upItem.title}">${upItem.title}</span>
-            </div>
-          `;
-        }
-
-        if (!upcomingHTML) {
-          upcomingHTML = `<div class="text-[10px] text-blue-400 italic">Continuous Loop Broadcast</div>`;
-        }
-
         const row = document.createElement("div");
-        row.className = `grid grid-cols-12 gap-2 p-2.5 rounded-lg border transition cursor-pointer items-center ${
-          isActive 
-            ? "bg-amber-500/20 border-amber-400 text-amber-200 shadow-lg" 
-            : "bg-blue-900/40 border-blue-800 hover:bg-blue-800/60 text-blue-100"
+        row.className = `flex items-center bg-blue-900/40 border border-blue-800 rounded-lg overflow-hidden min-h-[70px] ${
+          isActive ? "border-amber-400 bg-amber-500/10 shadow-lg" : "hover:bg-blue-800/40"
         }`;
-        row.onclick = () => {
+
+        // Channel Station Badge Column (Sticky Left)
+        const stationCol = document.createElement("div");
+        stationCol.className = "w-40 shrink-0 p-3 bg-blue-950 border-r border-blue-800 flex items-center space-x-3 cursor-pointer select-none";
+        stationCol.onclick = () => {
           tuneChannel(idx, nowIdx);
           toggleCableGuideModal();
         };
-
-        row.innerHTML = `
-          <div class="col-span-3 sm:col-span-2 flex items-center space-x-2 overflow-hidden">
-            <span class="font-bold text-sm px-2 py-1 rounded text-black shrink-0" style="background-color: ${ch.color || '#38bdf8'}; font-family: 'VT323', monospace;">CH ${(idx + 1).toString().padStart(2, '0')}</span>
-            <div class="truncate font-bold text-xs sm:text-sm text-amber-300">${ch.name}</div>
-          </div>
-          <div class="col-span-9 sm:col-span-4 bg-black/40 p-2 rounded border border-blue-700/60 flex items-center justify-between overflow-hidden">
-            <div class="truncate">
-              <div class="flex items-center space-x-2 text-[11px] text-amber-400 font-bold">
-                <span class="bg-blue-950 px-1.5 py-0.5 rounded border border-blue-700/50 text-[10px] shrink-0 font-mono">${nowTimeStr}</span>
-                <span class="truncate">${nowItem.title}</span>
-              </div>
-              <div class="text-[10px] text-blue-300 truncate mt-0.5">${ch.description || "Continuous Broadcast Loop"}</div>
-            </div>
-            ${isActive ? '<span class="text-[10px] bg-red-600 text-white font-bold px-1.5 py-0.5 rounded animate-pulse shrink-0 ml-2">LIVE</span>' : ''}
-          </div>
-          <div class="hidden sm:block sm:col-span-6 bg-black/20 p-2 rounded border border-blue-800/40 overflow-y-auto max-h-24 space-y-1">
-            ${upcomingHTML}
+        stationCol.innerHTML = `
+          <span class="font-bold text-sm px-2 py-1 rounded text-black shrink-0 vt323" style="background-color: ${ch.color || '#38bdf8'}">CH ${(idx + 1).toString().padStart(2, '0')}</span>
+          <div class="truncate">
+            <div class="font-bold text-xs text-amber-300 truncate">${ch.name}</div>
+            <div class="text-[10px] text-blue-300 uppercase">${ch.callSign || 'CABLE'}</div>
           </div>
         `;
+        row.appendChild(stationCol);
+
+        // Horizontal Program Blocks Container
+        const blocksContainer = document.createElement("div");
+        blocksContainer.className = "flex flex-1 overflow-x-auto no-scrollbar items-center space-x-1 p-1";
+
+        let currentProgTime = nowItemStartSeconds;
+        let progIdx = nowIdx;
+
+        // Populate blocks across the timeline slots
+        for (let b = 0; b < 12; b++) {
+          const item = ch.items[progIdx] || { title: "Program Schedule" };
+          const durSec = itemDurations[progIdx] || 1800;
+          const endTime = currentProgTime + durSec;
+
+          const blockDiv = document.createElement("div");
+          // Calculate width relative to duration (approx 60px per 5 minutes or fixed min-w)
+          const widthClass = durSec <= 900 ? "w-40" : (durSec <= 1800 ? "w-64" : (durSec <= 3600 ? "w-96" : "w-[500px]"));
+          
+          const isCurrentBlock = b === 0;
+          blockDiv.className = `${widthClass} shrink-0 p-2.5 rounded border transition cursor-pointer flex flex-col justify-between h-14 ${
+            isCurrentBlock 
+              ? "bg-amber-600/90 border-amber-300 text-black font-bold shadow" 
+              : "bg-blue-950/80 border-blue-800 text-blue-200 hover:bg-blue-900"
+          }`;
+          
+          blockDiv.onclick = () => {
+            tuneChannel(idx, progIdx);
+            toggleCableGuideModal();
+          };
+
+          const startTimeStr = new Date(currentProgTime * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          
+          blockDiv.innerHTML = `
+            <div class="flex items-center justify-between text-[10px] opacity-90 font-mono">
+              <span>${startTimeStr}</span>
+              ${isCurrentBlock ? '<span class="bg-black text-amber-300 px-1 rounded animate-pulse">LIVE</span>' : ''}
+            </div>
+            <div class="truncate text-xs font-bold ${isCurrentBlock ? 'text-black' : 'text-yellow-300'}" title="${item.title}">${item.title}</div>
+          `;
+
+          blocksContainer.appendChild(blockDiv);
+
+          currentProgTime = endTime;
+          progIdx = (progIdx + 1) % ch.items.length;
+        }
+
+        row.appendChild(blocksContainer);
         grid.appendChild(row);
       });
     }
 
-    async function loadChannels() {
-      // Check if user explicitly deleted/cleared all channels
-      const isCleared = localStorage.getItem("archive_tv_channels_cleared");
-      if (isCleared === "true") {
-        state.channels = [];
-        renderSideChannelList();
-        showNoChannelsState();
+    async function detectChannelNameFromInput() {
+      const textarea = $("newChIds");
+      const nameInput = $("newChName");
+      const notice = $("autoNameNotice");
+      if (!textarea || !nameInput) return;
+
+      const text = textarea.value.trim();
+      if (!text) {
+        if (notice) notice.innerText = "";
         return;
       }
 
-      // Prioritize local user changes so deleted/edited channels persist across refreshes
-      const saved = localStorage.getItem("archive_tv_channels");
-      if (saved !== null) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            state.channels = parsed;
-            renderSideChannelList();
-            if (state.channels.length === 0) {
-              showNoChannelsState();
-            }
-            return;
-          }
-        } catch(e) {}
-      }
-
-      // If no local storage exists at all, fetch initial channels.json remote preset
-      try {
-        const res = await fetch("channels.json?t=" + Date.now());
-        if (res.ok) {
-          const remoteData = await res.json();
-          if (Array.isArray(remoteData) && remoteData.length > 0) {
-            state.channels = remoteData;
-            localStorage.setItem("archive_tv_channels", JSON.stringify(state.channels));
-            renderSideChannelList();
-            return;
-          }
+      const firstLine = text.split("\n")[0].trim();
+      
+      // If user pasted a YouTube playlist or channel or video link, try auto-fetching title
+      if (firstLine.includes("playlist?list=") || firstLine.includes("watch?v=") || firstLine.startsWith("@") || firstLine.length === 11) {
+        if (notice) notice.innerText = "⏳ Detecting title...";
+        
+        let sampleId = firstLine;
+        if (firstLine.includes("watch?v=")) sampleId = firstLine.split("v=")[1].split("&")[0];
+        else if (firstLine.includes("youtu.be/")) sampleId = firstLine.split("youtu.be/")[1].split("?")[0];
+        else if (firstLine.startsWith("@")) {
+          nameInput.value = firstLine.replace("@", "").toUpperCase() + " TV";
+          if (notice) notice.innerText = "✓ Auto-named from channel";
+          return;
         }
-      } catch(e) {}
 
-      state.channels = DEFAULT_CHANNELS;
-      localStorage.setItem("archive_tv_channels", JSON.stringify(state.channels));
-      renderSideChannelList();
-      showNoChannelsState();
-    }
-
-    function saveChannelsStorage() {
-      if (state.channels.length === 0) {
-        localStorage.setItem("archive_tv_channels", JSON.stringify([]));
-        localStorage.setItem("archive_tv_channels_cleared", "true");
-      } else {
-        localStorage.removeItem("archive_tv_channels_cleared");
-        localStorage.setItem("archive_tv_channels", JSON.stringify(state.channels));
-      }
-      renderSideChannelList();
-      renderManageChannelsList();
-    }
-
-    window.resetChannelsToDefault = function() {
-      if (confirm("Are you sure you want to reset to the default channel lineup?")) {
-        localStorage.removeItem("archive_tv_channels");
-        localStorage.removeItem("archive_tv_channels_cleared");
-        state.channels = [...DEFAULT_CHANNELS];
-        saveChannelsStorage();
-        tuneChannel(0);
-      }
-    };
-
-    function showNoChannelsState() {
-      const splash = $("splashScreen");
-      const splashTitle = $("splashTitle");
-      const splashDesc = $("splashDesc");
-      const splashBtn = $("splashBtn");
-      const powerBtn = $("powerBtn");
-      const vid = $("tvVideo");
-      const iframe = $("tvIframe");
-
-      if (vid) vid.pause(), vid.classList.add("hidden");
-      if (iframe) iframe.classList.add("hidden");
-
-      if (powerBtn) {
-        powerBtn.classList.remove("bg-emerald-600");
-        powerBtn.classList.add("bg-red-600");
-      }
-
-      if (splash) splash.classList.remove("hidden");
-      if (splashTitle) splashTitle.innerText = "NO CHANNELS FOUND";
-      if (splashDesc) splashDesc.innerText = "There are currently no channels available. Click '+ New Channel' to add one.";
-      if (splashBtn) {
-        splashBtn.innerText = "＋ Add First Channel";
-        splashBtn.onclick = openChannelBuilder;
-      }
-    }
-
-    window.tuneChannel = async function(chIdx, itemIdx = 0) {
-      if (!state.channels || state.channels.length === 0) {
-        showNoChannelsState();
-        return;
-      }
-
-      if (chIdx < 0) chIdx = state.channels.length - 1;
-      if (chIdx >= state.channels.length) chIdx = 0;
-      
-      state.currentChannelIndex = chIdx;
-      state.currentItemIndex = itemIdx;
-      state.isPoweredOn = true;
-      state.currentItemStartTime = Date.now();
-      
-      const splash = $("splashScreen");
-      if (splash) splash.classList.add("hidden");
-      const powerBtn = $("powerBtn");
-      if (powerBtn) {
-        powerBtn.classList.remove("bg-red-600");
-        powerBtn.classList.add("bg-emerald-600");
-      }
-
-      playCurrentItemWithTimeSync();
-      triggerOSD();
-    };
-
-    function checkVideoEndProgress() {
-      if (!state.isPoweredOn || state.channels.length === 0) return;
-      const ch = state.channels[state.currentChannelIndex];
-      if (!ch || !ch.items || ch.items.length === 0) return;
-
-      const it = ch.items[state.currentItemIndex];
-      if (!it) return;
-
-      const durSec = it.durationSec || parseDurationInSeconds(it.duration) || 1800;
-      
-      // If we've passed the item duration, advance to next video
-      if (state.currentItemStartTime && (Date.now() - state.currentItemStartTime) >= (durSec * 1000)) {
-        window.onVideoEnded();
-      }
-    }
-
-    function playCurrentItemWithTimeSync() {
-      const ch = state.channels[state.currentChannelIndex];
-      if (!ch || !ch.items || ch.items.length === 0) return;
-
-      const now = new Date();
-      const currentSeconds = Math.floor(now.getTime() / 1000);
-      
-      const itemDurations = ch.items.map(item => item.durationSec || parseDurationInSeconds(item.duration));
-      const totalChannelDuration = itemDurations.reduce((acc, curr) => acc + curr, 0) || 1800;
-      
-      let relativeSeconds = currentSeconds % totalChannelDuration;
-
-      let targetItemIdx = 0;
-      let elapsedInItem = relativeSeconds;
-      
-      for (let i = 0; i < itemDurations.length; i++) {
-        if (elapsedInItem < itemDurations[i]) {
-          targetItemIdx = i;
-          break;
-        }
-        elapsedInItem -= itemDurations[i];
-        if (i === itemDurations.length - 1) {
-          targetItemIdx = i;
-        }
-      }
-
-      state.currentItemIndex = targetItemIdx;
-      state.currentItemStartTime = Date.now() - (elapsedInItem * 1000);
-      const offset = elapsedInItem;
-      const it = ch.items[targetItemIdx];
-
-      const vid = $("tvVideo");
-      const iframe = $("tvIframe");
-
-      if (isYT(it.id)) {
-        if (vid) vid.pause(), vid.classList.add("hidden");
-        if (iframe) {
-          iframe.classList.remove("hidden");
-          const ytCode = ytVid(it.id);
-          iframe.src = `https://www.youtube-nocookie.com/embed/${ytCode}?autoplay=1&mute=${state.userInteracted ? 0 : 1}&start=${Math.floor(offset)}&enablejsapi=1&playsinline=1&rel=0`;
-        }
-      } else {
-        if (state.forceIframeEngine) {
-          if (vid) vid.pause(), vid.classList.add("hidden");
-          if (iframe) {
-            iframe.classList.remove("hidden");
-            iframe.src = `${ARCHIVE_EMBED(it.id)}?autoplay=1&start=${Math.floor(offset)}`;
-          }
-        } else {
-          if (iframe) iframe.classList.add("hidden");
-          if (vid) {
-            vid.classList.remove("hidden");
-            vid.src = `https://archive.org/download/${encodeURIComponent(it.id)}/${encodeURIComponent(it.id)}.mp4`;
-            vid.currentTime = Math.floor(offset);
-            vid.volume = state.volume;
-            
-            if (!state.userInteracted) {
-              vid.muted = true;
-              const overlay = $("androidUnmuteOverlay");
-              if (overlay) overlay.classList.remove("hidden");
-            } else {
-              vid.muted = false;
-            }
-
-            const playPromise = vid.play();
-            if (playPromise !== undefined) {
-              playPromise.catch(() => {
-                vid.classList.add("hidden");
-                if (iframe) {
-                  iframe.classList.remove("hidden");
-                  iframe.src = `${ARCHIVE_EMBED(it.id)}?autoplay=1&start=${Math.floor(offset)}`;
-                }
-              });
-            }
+        if (sampleId.length === 11) {
+          const title = await fetchYouTubeVideoTitle(sampleId);
+          if (title && !nameInput.value) {
+            // Simplify title for channel name
+            const cleanTitle = title.split(/[-|–:]/)[0].trim();
+            nameInput.value = cleanTitle;
+            if (notice) notice.innerText = "✓ Auto-named";
+          } else {
+            if (notice) notice.innerText = "";
           }
         }
       }
