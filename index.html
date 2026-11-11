@@ -229,9 +229,42 @@
           </div>
         </div>
 
-        <div>
-          <label class="block text-xs text-zinc-400 mb-1">Video Items & Duration (MM:SS or Seconds)</label>
-          <textarea id="newChIds" rows="5" placeholder="yt:v9EdW9ADEZQ, 45:30&#10;https://www.youtube.com/watch?v=NAWOdnuDBBU | 15:05&#10;@G4TV&#10;X-Play.2011.04.19, 21:45" class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-500"></textarea>
+        <!-- Additional Broadcast Settings -->
+        <div class="bg-zinc-950 p-3 rounded-lg border border-zinc-800 space-y-3">
+          <div class="text-xs font-bold text-amber-400 uppercase tracking-wider">Advanced Station Settings</div>
+          
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] text-zinc-400 mb-1">Station Call Sign</label>
+              <input type="text" id="newChCallSign" placeholder="e.g. WRET-TV" class="w-full bg-zinc-900 border border-zinc-700 rounded px-2.5 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-amber-500">
+            </div>
+            <div>
+              <label class="block text-[11px] text-zinc-400 mb-1">Aspect Ratio</label>
+              <select id="newChAspect" class="w-full bg-zinc-900 border border-zinc-700 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                <option value="cover">Fill / Cover (Default)</option>
+                <option value="contain">Letterbox / Contain</option>
+                <option value="fill">Stretch to Fill</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] text-zinc-400 mb-1">CRT Static Intensity</label>
+              <select id="newChStatic" class="w-full bg-zinc-900 border border-zinc-700 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                <option value="normal">Normal Scanlines</option>
+                <option value="high">High Static Grain</option>
+                <option value="off">Clean Screen</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] text-zinc-400 mb-1">Audio Normalization</label>
+              <select id="newChAudioBoost" class="w-full bg-zinc-900 border border-zinc-700 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                <option value="standard">Standard Level</option>
+                <option value="boost">Broadcast Boost (+3dB)</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <div class="pt-2 flex justify-end space-x-3">
@@ -1101,6 +1134,10 @@ window.onload = function() {
       $("newChIds").value = "";
       $("newChColor").value = "#38bdf8";
       $("newChMode").value = "loop";
+      if ($("newChCallSign")) $("newChCallSign").value = "";
+      if ($("newChAspect")) $("newChAspect").value = "cover";
+      if ($("newChStatic")) $("newChStatic").value = "normal";
+      if ($("newChAudioBoost")) $("newChAudioBoost").value = "standard";
       renderManageChannelsList();
       $("builderModal").classList.remove("hidden");
     };
@@ -1118,6 +1155,10 @@ window.onload = function() {
       $("newChDesc").value = ch.description || "";
       $("newChColor").value = ch.color || "#38bdf8";
       $("newChMode").value = ch.mode || "loop";
+      if ($("newChCallSign")) $("newChCallSign").value = ch.callSign || "";
+      if ($("newChAspect")) $("newChAspect").value = ch.aspect || "cover";
+      if ($("newChStatic")) $("newChStatic").value = ch.staticIntensity || "normal";
+      if ($("newChAudioBoost")) $("newChAudioBoost").value = ch.audioBoost || "standard";
 
       let lines = [];
       if (ch.items) {
@@ -1146,7 +1187,7 @@ window.onload = function() {
 
     window.saveNewChannel = async function() {
       const btn = $("saveChannelBtn");
-      if (btn) btn.innerText = "Resolving Links...", btn.disabled = true;
+      if (btn) btn.innerText = "Saving Channel...", btn.disabled = true;
 
       try {
         const editIdx = parseInt($("editingChIdx").value, 10);
@@ -1154,24 +1195,32 @@ window.onload = function() {
         const desc = $("newChDesc").value.trim() || "User generated channel";
         const color = $("newChColor").value || "#38bdf8";
         const mode = $("newChMode").value || "loop";
-        const rawLines = $("newChIds").value.split("\n").map(l => l.trim()).filter(Boolean);
+        const callSign = $("newChCallSign") ? $("newChCallSign").value.trim() : "";
+        const aspect = $("newChAspect") ? $("newChAspect").value : "cover";
+        const staticIntensity = $("newChStatic") ? $("newChStatic").value : "normal";
+        const audioBoost = $("newChAudioBoost") ? $("newChAudioBoost").value : "standard";
 
+        const rawLines = $("newChIds").value.split("\n").map(l => l.trim()).filter(Boolean);
         const items = [];
 
         for (const line of rawLines) {
           if (line.includes("playlist?list=") || line.includes("&list=")) {
             const playlistItems = await fetchPlaylistVideosFromUrl(line);
-            items.push(...playlistItems);
-            continue;
+            if (playlistItems && playlistItems.length > 0) {
+              items.push(...playlistItems);
+              continue;
+            }
           }
 
           if (line.startsWith("@") || line.includes("youtube.com/")) {
             const userVids = await fetchChannelVideosFromUser(line);
-            items.push(...userVids);
-            continue;
+            if (userVids && userVids.length > 0) {
+              items.push(...userVids);
+              continue;
+            }
           }
 
-          const parts = line.split(",").map(p => p.trim());
+          const parts = line.split(/[,|]/).map(p => p.trim());
           let id = parts[0];
           let durStr = parts[1] || "30:00";
           
@@ -1179,31 +1228,12 @@ window.onload = function() {
             id = "yt:" + id.split("v=")[1].split("&")[0];
           } else if (id.includes("youtu.be/")) {
             id = "yt:" + id.split("youtu.be/")[1].split("?")[0];
+          } else if (!id.startsWith("yt:") && id.length === 11 && !id.includes("/")) {
+            id = "yt:" + id;
           }
 
-          let title = id;
-          let durationSec = parseDurationInSeconds(durStr);
-
-          if (isYT(id)) {
-            const vId = ytVid(id);
-            // Race title & duration fetching with a strict 3-second timeout so it never freezes
-            try {
-              const fetchPromise = Promise.all([
-                fetchYouTubeVideoTitle(vId),
-                fetchYouTubeVideoDuration(vId)
-              ]);
-              const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 3000));
-              
-              const [resolvedTitle, resolvedDur] = await Promise.race([fetchPromise, timeoutPromise]);
-              if (resolvedTitle) title = resolvedTitle;
-              if (resolvedDur && resolvedDur > 0 && !parts[1]) durationSec = resolvedDur;
-            } catch (e) {
-              // Fallback immediately without freezing if proxy takes too long
-              title = `YouTube Video (${vId})`;
-            }
-          } else {
-            title = id;
-          }
+          const durationSec = parseDurationInSeconds(durStr);
+          const title = isYT(id) ? `YouTube Video (${ytVid(id)})` : id;
 
           items.push({
             id: id,
@@ -1213,11 +1243,24 @@ window.onload = function() {
           });
         }
 
+        if (items.length === 0) {
+          items.push({
+            id: "yt:v9EdW9ADEZQ",
+            title: "Default Broadcast Program",
+            durationSec: 1800,
+            duration: 30
+          });
+        }
+
         const newCh = {
           name: name,
           description: desc,
           color: color,
           mode: mode,
+          callSign: callSign,
+          aspect: aspect,
+          staticIntensity: staticIntensity,
+          audioBoost: audioBoost,
           items: items
         };
 
