@@ -229,7 +229,7 @@
           </div>
         </div>
 
-        <!-- Additional Broadcast Settings -->
+        <!-- Advanced Broadcast Settings -->
         <div class="bg-zinc-950 p-3 rounded-lg border border-zinc-800 space-y-3">
           <div class="text-xs font-bold text-amber-400 uppercase tracking-wider">Advanced Station Settings</div>
           
@@ -328,7 +328,8 @@
       volume: 0.8,
       crtEnabled: true,
       theaterMode: false,
-      userInteracted: false
+      userInteracted: false,
+      forceIframeEngine: false
     };
 
     function $(id) { return document.getElementById(id); }
@@ -345,6 +346,65 @@
       return id.replace("yt:", "");
     }
 
+    function tuneChannel(chIdx, itemIdx = 0) {
+      if (!state.channels || state.channels.length === 0) return;
+      if (chIdx < 0 || chIdx >= state.channels.length) chIdx = 0;
+      
+      state.currentChannelIndex = chIdx;
+      state.currentItemIndex = itemIdx;
+      state.isPoweredOn = true;
+
+      const powerBtn = $("powerBtn");
+      if (powerBtn) {
+        powerBtn.classList.remove("bg-red-600");
+        powerBtn.classList.add("bg-emerald-600");
+      }
+
+      const splash = $("splashScreen");
+      if (splash) splash.classList.add("hidden");
+
+      renderSideChannelList();
+      playCurrentItemWithTimeSync();
+      triggerOSD();
+    }
+
+    function playCurrentItemWithTimeSync() {
+      const ch = state.channels[state.currentChannelIndex];
+      if (!ch || !ch.items || ch.items.length === 0) return;
+
+      const item = ch.items[state.currentItemIndex] || ch.items[0];
+      const vid = $("tvVideo");
+      const iframe = $("tvIframe");
+
+      if (!vid || !iframe) return;
+
+      if (isYT(item.id) || state.forceIframeEngine) {
+        vid.pause();
+        vid.classList.add("hidden");
+        
+        const yId = isYT(item.id) ? ytVid(item.id) : item.id;
+        const embedUrl = isYT(item.id) 
+          ? `https://www.youtube.com/embed/${yId}?autoplay=1&controls=1&enablejsapi=1&rel=0`
+          : ARCHIVE_EMBED(item.id);
+
+        iframe.src = embedUrl;
+        iframe.classList.remove("hidden");
+      } else {
+        iframe.classList.add("hidden");
+        iframe.src = "about:blank";
+
+        const directUrl = `https://archive.org/download/${item.id}/${item.id}.mp4`;
+        vid.src = directUrl;
+        vid.volume = state.volume;
+        vid.classList.remove("hidden");
+        vid.play().catch(e => {
+          console.warn("Autoplay error, falling back to iframe player:", e);
+          state.forceIframeEngine = true;
+          playCurrentItemWithTimeSync();
+        });
+      }
+    }
+
     async function fetchPlaylistVideosFromUrl(urlStr) {
       let listId = "";
       if (urlStr.includes("list=")) {
@@ -354,8 +414,7 @@
 
       const proxies = [
         `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(`https://www.youtube.com/feeds/videos.xml?playlist_id=${listId}`)}`,
-        `https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.youtube.com/feeds/videos.xml?playlist_id=${listId}`)}`,
-        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://www.youtube.com/feeds/videos.xml?playlist_id=${listId}`)}`
+        `https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.youtube.com/feeds/videos.xml?playlist_id=${listId}`)}`
       ];
 
       for (const proxy of proxies) {
@@ -363,96 +422,25 @@
           const res = await fetch(proxy);
           if (res.ok) {
             const data = await res.json();
-            
             if (data.items && data.items.length > 0) {
-              const itemsWithDurations = [];
-              for (const item of data.items) {
+              return data.items.map(item => {
                 const vidId = item.link.includes("v=") ? item.link.split("v=")[1].split("&")[0] : (item.guid ? item.guid.split(":").pop() : "");
-                let durationSec = 1800;
-                if (vidId) {
-                  durationSec = await fetchYouTubeVideoDuration(vidId);
-                }
-                itemsWithDurations.push({
+                return {
                   id: "yt:" + vidId,
                   title: item.title || "Playlist Video",
-                  durationSec: durationSec,
-                  duration: durationSec / 60
-                });
-              }
-              return itemsWithDurations.filter(it => it.id !== "yt:");
-            }
-
-            if (data.contents) {
-              const xmlText = data.contents;
-              const matches = [...xmlText.matchAll(/<yt:videoId>([a-zA-Z0-9_-]{11})<\/yt:videoId>/g)];
-              const titleMatches = [...xmlText.matchAll(/<title>(.*?)<\/title>/g)];
-              
-              const foundIds = [...new Set(matches.map(m => m[1]))];
-              if (foundIds.length > 0) {
-                const results = [];
-                for (let idx = 0; idx < foundIds.length; idx++) {
-                  const vId = foundIds[idx];
-                  const durationSec = await fetchYouTubeVideoDuration(vId);
-                  results.push({
-                    id: "yt:" + vId,
-                    title: (titleMatches[idx + 1] ? titleMatches[idx + 1][1] : "Playlist Video"),
-                    durationSec: durationSec,
-                    duration: durationSec / 60
-                  });
-                }
-                return results;
-              }
+                  durationSec: 1800,
+                  duration: 30
+                };
+              }).filter(it => it.id !== "yt:");
             }
           }
-        } catch(e) {
-          console.warn("Failed fetching playlist RSS:", e);
-        }
+        } catch(e) {}
       }
       return [];
     }
 
-    async function fetchYouTubeVideoDuration(vId) {
-      const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${vId}&format=json`;
-      const proxies = [
-        `https://api.allorigins.win/get?url=${encodeURIComponent(oembedUrl)}`,
-        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(oembedUrl)}`
-      ];
-
-      for (const proxy of proxies) {
-        try {
-          const res = await fetch(proxy);
-          if (res.ok) {
-            const data = await res.json();
-            const contents = data.contents ? JSON.parse(data.contents) : data;
-            // oembed returns author/title; if author name resembles duration or we want estimation:
-            // Since oembed doesn't provide duration in seconds natively, we can fetch via invidious/ytdlp API proxy or default to standard length estimation or try fallback:
-          }
-        } catch (e) {}
-      }
-
-      // Try fetching duration via Invidious / Piped API public instances as a robust fallback
-      const invidiousInstances = [
-        `https://vid.puffyan.us/api/v1/videos/${vId}`,
-        `https://invidious.projectsegfau.lt/api/v1/videos/${vId}`
-      ];
-      for (const invUrl of invidiousInstances) {
-        try {
-          const res = await fetch(invUrl);
-          if (res.ok) {
-            const json = await res.json();
-            if (json && json.lengthSeconds) {
-              return parseInt(json.lengthSeconds, 10);
-            }
-          }
-        } catch (e) {}
-      }
-
-      return 1800; // default 30 mins fallback if API lookup fails
-    }
-
     async function fetchChannelVideosFromUser(inputStr) {
       let handle = inputStr.trim();
-      
       if (handle.includes("youtube.com/")) {
         const parts = handle.split("youtube.com/")[1].split("/");
         handle = parts[0];
@@ -461,71 +449,35 @@
         handle = "@" + handle;
       }
 
-      const proxies = [
-        `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(`https://www.youtube.com/feeds/videos.xml?user=${handle.replace('@','')}`)}`,
-        `https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.youtube.com/feeds/videos.xml?user=${handle.replace('@','')}`)}`
-      ];
-
-      for (const proxy of proxies) {
-        try {
-          const res = await fetch(proxy);
-          if (res.ok) {
-            const data = await res.json();
-            
-            if (data.items && data.items.length > 0) {
-              return data.items.map(item => {
-                const vidId = item.link.split("v=")[1] ? item.link.split("v=")[1].split("&")[0] : item.guid.split(":").pop();
-                return {
-                  id: "yt:" + vidId,
-                  title: item.title || "YouTube Video",
-                  duration: 30
-                };
-              });
-            }
-
-            if (data.contents) {
-              const xmlText = data.contents;
-              const matches = [...xmlText.matchAll(/<yt:videoId>([a-zA-Z0-9_-]{11})<\/yt:videoId>/g)];
-              const titleMatches = [...xmlText.matchAll(/<title>(.*?)<\/title>/g)];
-              
-              const foundIds = [...new Set(matches.map(m => m[1]))];
-              if (foundIds.length > 0) {
-                return foundIds.map((vId, idx) => ({
-                  id: "yt:" + vId,
-                  title: (titleMatches[idx + 1] ? titleMatches[idx + 1][1] : "YouTube Video"),
-                  duration: 30
-                }));
-              }
-            }
+      const proxy = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(`https://www.youtube.com/feeds/videos.xml?user=${handle.replace('@','')}`)}`;
+      try {
+        const res = await fetch(proxy);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.items && data.items.length > 0) {
+            return data.items.map(item => {
+              const vidId = item.link.split("v=")[1] ? item.link.split("v=")[1].split("&")[0] : item.guid.split(":").pop();
+              return {
+                id: "yt:" + vidId,
+                title: item.title || "YouTube Video",
+                durationSec: 1800,
+                duration: 30
+              };
+            });
           }
-        } catch(e) {
-          console.warn("Failed fetching channel RSS:", e);
         }
-      }
+      } catch(e) {}
       return [];
     }
 
     async function fetchYouTubeVideoTitle(vId) {
-      const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${vId}&format=json`;
-      const proxies = [
-        `https://api.allorigins.win/get?url=${encodeURIComponent(oembedUrl)}`,
-        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(oembedUrl)}`
-      ];
-
-      for (const proxy of proxies) {
-        try {
-          const res = await fetch(proxy);
-          if (res.ok) {
-            const data = await res.json();
-            const contents = data.contents ? JSON.parse(data.contents) : data;
-            if (contents && contents.title) {
-              return contents.title;
-            }
-          }
-        } catch (e) {
-          console.warn("Title fetch failed for video:", vId, e);
+      try {
+        const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${vId}&format=json`);
+        if (res.ok) {
+          const contents = await res.json();
+          if (contents && contents.title) return contents.title;
         }
-      }
+      } catch (e) {}
       return `YouTube Video (${vId})`;
     }
 
@@ -586,7 +538,18 @@
     }
 
     function updateClock() {
-      }
+      const now = new Date();
+      const str = now.toLocaleTimeString();
+      const el = $("currentTimeDisplay");
+      const pEl = $("prevueClock");
+      if (el) el.innerText = str;
+      if (pEl) pEl.innerText = str;
+    }
+
+    window.onload = function() {
+      loadChannels();
+      setInterval(updateClock, 1000);
+      updateClock();
     };
 
     function renderCableGuideGrid() {
